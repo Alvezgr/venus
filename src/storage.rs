@@ -20,7 +20,7 @@ pub fn now() -> f64 {
         .unwrap_or(0.0)
 }
 
-fn dir() -> PathBuf {
+pub(crate) fn dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("MERCURY_HOME") {
         return PathBuf::from(dir);
     }

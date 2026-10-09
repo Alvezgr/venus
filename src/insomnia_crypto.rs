@@ -40,7 +40,7 @@ pub fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
         .ok_or_else(|| format!("Insomnia data is missing {key}"))
 }
 
-fn decode_uri_json(bytes: &[u8]) -> Result<Value, String> {
+pub(crate) fn decode_uri_json(bytes: &[u8]) -> Result<Value, String> {
     let text = std::str::from_utf8(bytes).map_err(|_| "Invalid encrypted key text".to_string())?;
     // encodeURIComponent leaves '+' literal, unlike form encoding.
     serde_json::from_str(&crate::kv::url_decode(&text.replace('+', "%2B")))

@@ -24,6 +24,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 
+#[path = "cloud.rs"]
+mod cloud;
+
 const ISSUES_URL: &str = "https://github.com/Harry-kp/mercury/issues";
 const RELEASES_URL: &str = "https://github.com/Harry-kp/mercury/releases";
 const DOCS_URL: &str = "https://harry-kp.github.io/mercury/docs/getting-started";
@@ -191,6 +194,8 @@ enum Event {
     FilesChanged,
     Toast(String, bool),
     Synced(PathBuf, Result<String, String>),
+    CloudAccount(u64, cloud::AccountResult),
+    CloudDownloaded(Result<Option<(PathBuf, String)>, String>),
 }
 
 pub struct Importer {
@@ -281,6 +286,7 @@ pub struct MercuryApp {
     sync_project: Option<String>,
     sync_busy: Option<&'static str>,
     sync_result: Option<(String, bool)>,
+    cloud_picker: Option<cloud::Picker>,
     /// egui time at the start of this frame (for toasts).
     time: f64,
 
@@ -345,6 +351,7 @@ impl MercuryApp {
             sync_project: None,
             sync_busy: None,
             sync_result: None,
+            cloud_picker: None,
             time: 0.0,
             ctx: ctx.clone(),
             tx,
@@ -882,6 +889,8 @@ impl MercuryApp {
                 Event::FilesChanged => files_changed = true,
                 Event::Toast(text, is_error) => self.notify(text, is_error),
                 Event::Synced(root, result) => self.finish_sync(root, result),
+                Event::CloudAccount(id, result) => self.on_cloud_account(id, result),
+                Event::CloudDownloaded(result) => self.on_cloud_download(result),
             }
         }
         if files_changed && self.sync_busy.is_none() {
@@ -1134,7 +1143,7 @@ impl MercuryApp {
 
     fn handle_keys(&mut self, ctx: &egui::Context) {
         // the palette owns the keyboard while it is open
-        if self.palette.is_some() {
+        if self.palette.is_some() || self.cloud_picker.is_some() {
             return;
         }
         let typing = ctx.wants_keyboard_input();
@@ -1542,6 +1551,7 @@ impl MercuryApp {
         // keys after widgets so text fields have claimed focus this frame
         self.handle_keys(ctx);
         self.show_dialog(ctx);
+        self.show_cloud_picker(ctx);
         self.command_palette(ctx);
     }
 }
@@ -1656,6 +1666,9 @@ impl MercuryApp {
             ui.label(strong("Insomnia Cloud Sync"));
             ui.label(muted("Requests only · master"));
             ui.separator();
+            if menu_item(ui, Some(Icon::Layers), "Browse cloud collections…", "") {
+                self.open_cloud_picker();
+            }
             ui.add_enabled_ui(connected, |ui| {
                 if menu_item(ui, Some(Icon::Download), "Pull from master", "") {
                     self.start_sync(true);

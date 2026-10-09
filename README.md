@@ -216,13 +216,16 @@ We deliberately don't build cloud sync, team collaboration, AI assistants, plugi
 
 This checkout adds a Rust bridge for an existing Insomnia Cloud collection.
 Mercury's code and workspace stay local; request changes sync with Insomnia's
-**master**. Use the existing Insomnia login on Linux. In a fetched workspace,
+**master**. Choose **Sync → Browse cloud collections…** to sign in through your
+browser or use the installed Insomnia login, pick a collection, and download
+master into an empty folder. No export is needed. In a fetched workspace,
 click the sync arrows and **master** in the bottom bar to pull or push directly.
 For the initial fetch or terminal commands, close Mercury first:
 
 ```bash
 cargo build
 ./target/debug/mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
+./target/debug/mercury --insomnia-collections
 ./target/debug/mercury --insomnia-plan <cloud-project-id> <workspace-folder>
 ./target/debug/mercury --insomnia-push <cloud-project-id> <workspace-folder>
 ```

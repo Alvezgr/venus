@@ -22,6 +22,20 @@ pub struct Cloud {
     endpoint: Option<String>,
 }
 
+#[derive(Clone, Deserialize)]
+pub struct Collection {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "rootDocumentId")]
+    pub root_id: String,
+    pub teams: Vec<Team>,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct Team {
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Branch {
     pub name: String,
@@ -51,7 +65,7 @@ struct PendingPush {
 
 const PENDING: &str = ".insomnia-sync/pending-push.json";
 
-fn read_session(content: &str) -> Result<Value, String> {
+pub(crate) fn read_session(content: &str) -> Result<Value, String> {
     let mut documents = HashMap::new();
     for line in content.lines().filter(|line| !line.trim().is_empty()) {
         let document: Value = serde_json::from_str(line)
@@ -76,20 +90,20 @@ fn read_session(content: &str) -> Result<Value, String> {
 }
 
 impl Cloud {
-    pub fn from_local_session(project_id: &str, directory: &Path) -> Result<Self, String> {
-        if !project_id.starts_with("prj_")
-            || project_id.len() <= 4
-            || !project_id
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+    pub fn connect(project_id: &str) -> Result<Self, String> {
+        Self::from_session(project_id, crate::insomnia_auth::load_session()?)
+    }
+
+    pub(crate) fn from_session(project_id: &str, session: Value) -> Result<Self, String> {
+        if !project_id.is_empty()
+            && (!project_id.starts_with("prj_")
+                || project_id.len() <= 4
+                || !project_id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')))
         {
             return Err("Invalid Insomnia cloud project ID".into());
         }
-        let content =
-            fs::read_to_string(directory.join("insomnia.UserSession.db")).map_err(|_| {
-                "Cannot read Insomnia's local login; open Insomnia and sign in".to_string()
-            })?;
-        let session = read_session(&content)?;
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .redirect(reqwest::redirect::Policy::none())
@@ -123,16 +137,7 @@ impl Cloud {
                 response.status()
             ));
         }
-        let mut content = Vec::new();
-        response
-            .take(MAX_RESPONSE_BYTES + 1)
-            .read_to_end(&mut content)
-            .map_err(|_| "Cannot read Insomnia Cloud response".to_string())?;
-        if content.len() as u64 > MAX_RESPONSE_BYTES {
-            return Err("Insomnia Cloud response exceeds 32 MiB".into());
-        }
-        let result: Value = serde_json::from_slice(&content)
-            .map_err(|_| "Insomnia Cloud returned invalid JSON".to_string())?;
+        let result = read_response(response)?;
         if result["errors"]
             .as_array()
             .is_some_and(|errors| !errors.is_empty())
@@ -141,6 +146,78 @@ impl Cloud {
             return Err("Insomnia Cloud rejected the query; check login and project access".into());
         }
         Ok(result["data"].clone())
+    }
+
+    pub(crate) fn get(&self, path: &str) -> Result<Value, String> {
+        let base = "https://api.insomnia.rest";
+        #[cfg(test)]
+        let base = self.endpoint.as_deref().unwrap_or(base);
+        let response = self
+            .client
+            .get(format!("{base}{path}"))
+            .header("X-Session-Id", crypto::string(&self.session, "id")?)
+            .header("X-Insomnia-Client", "production::linux::13.3.0")
+            .header("X-Origin", "https://api.insomnia.rest")
+            .send()
+            .map_err(|_| "Cannot reach Insomnia Cloud".to_string())?;
+        read_response(response)
+    }
+
+    pub fn collections(&self) -> Result<Vec<Collection>, String> {
+        let mut spaces = Vec::new();
+        let mut path = "/v3/users/me/spaces?page%5Bsize%5D=200".to_string();
+        let mut cursors = HashSet::new();
+        loop {
+            let page = self.get(&path)?;
+            for space in page["data"]
+                .as_array()
+                .ok_or_else(|| "Cloud returned an invalid workspace list".to_string())?
+            {
+                spaces.push(crypto::string(space, "id")?.to_string());
+            }
+            let Some(next) = page["meta"]["page"]["next"]
+                .as_str()
+                .filter(|next| !next.is_empty())
+            else {
+                break;
+            };
+            let url = reqwest::Url::parse("https://api.insomnia.rest")
+                .unwrap()
+                .join(next)
+                .map_err(|_| "Cloud returned invalid pagination".to_string())?;
+            let cursor = url
+                .query_pairs()
+                .find(|(key, _)| key == "page[after]")
+                .map(|(_, value)| value.into_owned())
+                .ok_or_else(|| "Cloud returned invalid pagination".to_string())?;
+            if !cursors.insert(cursor.clone()) || cursors.len() > 100 {
+                return Err("Cloud workspace pagination did not finish".into());
+            }
+            path = format!(
+                "/v3/users/me/spaces?page%5Bsize%5D=200&page%5Bafter%5D={}",
+                crate::kv::url_encode(&cursor)
+            );
+        }
+        let mut all = BTreeMap::new();
+        for team in std::iter::once(None).chain(spaces.iter().map(Some)) {
+            let data = self.query("query ($teamId: ID) { projects(teamId: $teamId, allProjects: true) { id name rootDocumentId teams { name } } }", json!({"teamId":team}))?;
+            let collections: Vec<Collection> = serde_json::from_value(data["projects"].clone())
+                .map_err(|_| "Cloud returned an invalid collection list".to_string())?;
+            for collection in collections {
+                all.insert(collection.id.clone(), collection);
+            }
+        }
+        let mut collections: Vec<_> = all.into_values().collect();
+        collections.retain(|collection| {
+            collection.root_id.starts_with("wrk_") && collection.id.starts_with("prj_")
+        });
+        collections.sort_by(|a, b| {
+            a.name
+                .to_lowercase()
+                .cmp(&b.name.to_lowercase())
+                .then(a.id.cmp(&b.id))
+        });
+        Ok(collections)
     }
 
     pub fn read_master_manifest(&self) -> Result<(Branch, Snapshot), String> {
@@ -433,6 +510,24 @@ fn validate_master(branch: &Branch) -> Result<&str, String> {
         .ok_or_else(|| "Remote master has no commits".into())
 }
 
+fn read_response(response: reqwest::blocking::Response) -> Result<Value, String> {
+    if !response.status().is_success() {
+        return Err(format!(
+            "Insomnia Cloud returned HTTP {}; sign in again if your session expired",
+            response.status()
+        ));
+    }
+    let mut content = Vec::new();
+    response
+        .take(MAX_RESPONSE_BYTES + 1)
+        .read_to_end(&mut content)
+        .map_err(|_| "Cannot read Insomnia Cloud response".to_string())?;
+    if content.len() as u64 > MAX_RESPONSE_BYTES {
+        return Err("Insomnia Cloud response exceeds 32 MiB".into());
+    }
+    serde_json::from_slice(&content).map_err(|_| "Insomnia Cloud returned invalid JSON".to_string())
+}
+
 pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
     let command = args.first()?;
     if !command.starts_with("--insomnia-") {
@@ -440,6 +535,7 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
     }
     Some((|| {
         let required = match command.as_str() {
+            "--insomnia-collections" => 1,
             "--insomnia-status" => 2,
             "--insomnia-fetch" | "--insomnia-push" | "--insomnia-plan" => 3,
             _ => return Err("Unknown Insomnia command".into()),
@@ -454,10 +550,15 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
                 }
             ));
         }
-        let directory = dirs::config_dir()
-            .ok_or_else(|| "Cannot locate Insomnia's local data".to_string())?
-            .join("Insomnia");
-        let cloud = Cloud::from_local_session(&args[1], &directory)?;
+        if command == "--insomnia-collections" {
+            let collections = Cloud::connect("")?.collections()?;
+            return Ok(collections
+                .iter()
+                .map(|collection| format!("{}: {}", collection.id, collection.name))
+                .collect::<Vec<_>>()
+                .join("\n"));
+        }
+        let cloud = Cloud::connect(&args[1])?;
         if command == "--insomnia-status" {
             let (branch, snapshot) = cloud.read_master_manifest()?;
             return Ok(format!(
@@ -495,6 +596,69 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn collections_include_paginated_teams_and_deduplicate_projects() {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for index in 0..5 {
+                let (mut socket, _) = listener.accept().unwrap();
+                socket
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut buffer = [0; 4096];
+                let header_end = loop {
+                    let count = socket.read(&mut buffer).unwrap();
+                    assert!(count > 0);
+                    request.extend_from_slice(&buffer[..count]);
+                    if let Some(end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
+                        let headers = String::from_utf8_lossy(&request[..end]);
+                        let length = headers
+                            .lines()
+                            .find_map(|line| {
+                                line.to_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(str::trim)
+                                    .map(str::parse::<usize>)
+                                    .map(Result::unwrap)
+                            })
+                            .unwrap_or(0);
+                        if request.len() >= end + 4 + length {
+                            break end;
+                        }
+                    }
+                };
+                let body = if index < 2 {
+                    let header = String::from_utf8_lossy(&request[..header_end]);
+                    assert!(header.starts_with("GET /v3/users/me/spaces?"));
+                    if index == 0 {
+                        json!({"data":[{"id":"org_first"}], "meta":{"page":{"next":"/v3/users/me/spaces?page%5Bafter%5D=next"}}})
+                    } else {
+                        assert!(header.contains("page%5Bafter%5D=next"));
+                        json!({"data":[{"id":"org_second"}], "meta":{"page":{"next":null}}})
+                    }
+                } else {
+                    let query: Value = serde_json::from_slice(&request[header_end + 4..]).unwrap();
+                    assert_eq!(query["variables"]["teamId"], match index { 2 => Value::Null, 3 => json!("org_first"), _ => json!("org_second") });
+                    let name = if index == 2 { "Old name" } else { "Team API" };
+                    let projects = if index == 4 { json!([{ "id":"prj_noncollection", "name":"Other", "rootDocumentId":"env_test", "teams":[] }]) }
+                        else { json!([{ "id":"prj_same", "name":name, "rootDocumentId":"wrk_test", "teams":[{"name":"Engineering"}] }]) };
+                    json!({"data":{"projects":projects}})
+                }.to_string();
+                write!(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{}", body.len(), body).unwrap();
+            }
+        });
+        let mut cloud = Cloud::from_session("", json!({"id":"example"})).unwrap();
+        cloud.endpoint = Some(endpoint);
+        let collections = cloud.collections().unwrap();
+        assert_eq!(collections.len(), 1);
+        assert_eq!(collections[0].name, "Team API");
+        assert_eq!(collections[0].teams[0].name, "Engineering");
+        server.join().unwrap();
+    }
 
     #[test]
     fn session_log_uses_latest_record_and_honors_deletion() {

@@ -10,13 +10,20 @@ Mercury imports Postman and Insomnia exports and cURL commands, and it can copy 
 
 ## Local Insomnia Cloud bridge (Linux)
 
+Choose **Sync → Browse cloud collections…** to sign in through your browser.
+Complete authentication on Insomnia's website and paste its authentication code
+into Mercury. You can also use an existing installed Insomnia login. Search
+collections by name or organization, select one, and choose an empty folder to
+download master. No collection export or project ID is needed for this flow.
+
 In a workspace fetched by the bridge, click the sync arrows and **master** in
 the bottom bar. Choose **Pull from master** to download updates or **Push to
 master** to share request changes. Mercury saves the open request, pauses editing
 during sync, and refreshes the workspace afterward. Errors remain in the sync
 menu. Pull refuses unpushed edits; push checks cloud conflicts.
 
-This local fork includes a Rust bridge using the existing Insomnia login. All
+This local fork includes a Rust bridge using Mercury's saved sign-in or the
+installed Insomnia login. All
 cloud reads and pushes target **master**, regardless of Insomnia's active branch.
 The bridge syncs requests and their folder locations; cloud environments stay
 unchanged. Close Mercury while using the terminal commands below, then reopen
@@ -24,6 +31,7 @@ its workspace. Sync from the bottom bar handles the refresh automatically.
 
 ```bash
 mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
+mercury --insomnia-collections
 mercury --insomnia-plan <cloud-project-id> <workspace-folder>
 mercury --insomnia-push <cloud-project-id> <workspace-folder>
 ```

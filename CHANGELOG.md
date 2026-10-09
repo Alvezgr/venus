@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Browser sign-in and a searchable Insomnia Cloud collection picker. Choose a
+  collection and local folder to download master without exporting or entering
+  project IDs. Mercury stores its own session and supports local sign-out.
 - A local Rust Insomnia Cloud bridge fetches and pushes collection requests on
   master using the existing Insomnia login. Includes a preview command, stable
   request IDs, conflict checks, backups, and recovery of interrupted pushes.

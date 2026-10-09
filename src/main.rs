@@ -6,6 +6,7 @@
 mod curl;
 mod http;
 mod import;
+mod insomnia_auth;
 mod insomnia_crypto;
 mod insomnia_sync;
 mod insomnia_workspace;
