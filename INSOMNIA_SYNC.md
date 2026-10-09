@@ -1,9 +1,9 @@
 # Insomnia Cloud Sync
 
 This fork includes a Rust bridge to Insomnia's existing Cloud Sync on Linux.
-It downloads collection requests from **master** and pushes request changes
+It downloads collection requests and environments from **master** and pushes changes
 back to **master**. Exporting a collection from Insomnia is not required.
-Cloud environments remain unchanged. Mercury's source repository is independent
+Mercury's source repository is independent
 of the collection's cloud branch.
 
 ## Sign in and choose a collection
@@ -46,8 +46,7 @@ cargo build
 
 The optional CLI project ID starts with `prj_`; `--insomnia-collections` lists
 accessible collection names and IDs. An initial fetch requires an empty destination.
-Open that folder as a workspace in Mercury afterward. Configure local `.env`
-files separately; cloud environments are not imported or uploaded.
+Open that folder as a workspace in Mercury afterward. Cloud environments are downloaded automatically; local `.env` files remain local.
 
 ## Sync inside Mercury
 
@@ -56,7 +55,7 @@ workspace, the control shows **Sync** and offers **Open synced workspace…**.
 Once connected, it shows **master**, with these actions:
 
 - **Pull from master** downloads collection updates.
-- **Push to master** shares saved request changes with the team.
+- **Push to master** shares saved request and environment changes with the team.
 
 Mercury saves the open request first, pauses editing during sync, and refreshes
 the workspace and file watcher afterward. Errors remain in the sync menu.
@@ -65,12 +64,28 @@ Teammates select master and pull using Insomnia's normal Cloud Sync controls.
 The CLI preview command shows proposed edits without uploading them. Request
 edits, renames, moves, creations and deletions are supported. Duplicating a
 request clears its cloud identity so the next push creates a new request.
-Empty folder edits are outside the requests-only scope.
+Empty folder edits are outside the sync scope.
+
+## Cloud environments
+
+Pull an existing synced workspace once to download its environments. Select an
+environment in Mercury's top-right menu. Cloud files are named
+`.env.insomnia-<name>-<id>.json` and contain the environment's own JSON data;
+sub-environments inherit their parent's variables at runtime. JSON keeps value
+types, objects, quotes and multiline secrets intact. Edit these files in your
+text editor and choose **Push to master** to share changes. Deleting a managed
+file deletes that cloud environment; a parent with remaining children cannot
+be deleted, and the collection's base environment cannot be deleted. Adding or
+renaming cloud environments is not supported yet.
+
+Ordinary `.env` files stay local and are never uploaded. Keep managed filenames
+and the sync baseline intact. Insomnia template tags and recursive variable
+expansion retain the execution limits described below.
 
 ## Safety and recovery
 
 - Fetch refuses unpushed edits and retains the previous workspace in a sibling
-  `.insomnia-backup_*` directory. Local `.env` files are retained.
+  `.insomnia-backup_*` directory. Untracked local `.env` files are retained.
 - Push compares edits with a fresh master snapshot and rejects conflicts. Keep
   the edited file outside the workspace, restore its fetched version, fetch
   master, then reapply the edit to resolve a conflict.

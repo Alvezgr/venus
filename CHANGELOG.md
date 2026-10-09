@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Download and push Insomnia Cloud environments as managed JSON files, with
+  base inheritance, native value types, conflict checks and local dotenv retention.
 - Browser sign-in and a searchable Insomnia Cloud collection picker. Choose a
   collection and local folder to download master without exporting or entering
   project IDs. Mercury stores its own session and supports local sign-out.

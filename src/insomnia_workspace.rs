@@ -1,4 +1,4 @@
-//! Projection and baseline for the request-only local Cloud Sync workspace.
+//! Projection and baseline for the local Cloud Sync workspace.
 
 use crate::{
     insomnia_crypto as crypto, kv,
@@ -66,6 +66,8 @@ pub struct Baseline {
     pub documents: BTreeMap<String, Value>,
     pub files: BTreeMap<String, Tracked>,
     pub groups: BTreeMap<String, String>,
+    #[serde(default)]
+    pub environments: BTreeMap<String, String>,
 }
 
 pub fn new_id(prefix: &str) -> Result<String, String> {
@@ -110,6 +112,19 @@ impl Baseline {
         for tracked in baseline.files.values() {
             safe_relative(Path::new(&tracked.path))?;
         }
+        let mut environment_paths = HashSet::new();
+        for (id, path) in &baseline.environments {
+            safe_relative(Path::new(path))?;
+            if !path.starts_with(".env.insomnia-")
+                || Path::new(path).components().count() != 1
+                || !environment_paths.insert(path)
+                || baseline.documents.get(id).is_none_or(|document| {
+                    document["type"] != "Environment" || !document["data"].is_object()
+                })
+            {
+                return Err("Invalid cloud environment path".into());
+            }
+        }
         for group in baseline.groups.keys() {
             safe_relative(Path::new(group))?;
         }
@@ -143,6 +158,7 @@ impl Baseline {
             documents,
             files: BTreeMap::new(),
             groups: BTreeMap::new(),
+            environments: BTreeMap::new(),
         };
         let mut paths = BTreeMap::new();
         let mut warnings = Vec::new();
@@ -178,10 +194,31 @@ impl Baseline {
                 project_request(&baseline.documents[&id], &baseline.documents, &mut warnings)?;
             baseline.files.insert(id, Tracked { path, request });
         }
+        for (id, document) in &baseline.documents {
+            if document["type"] == "Environment" {
+                if !document["data"].is_object() {
+                    return Err(format!("Environment {id} data must be a JSON object"));
+                }
+                let path = format!(".env.insomnia-{}-{}.json", name(document), id);
+                safe_relative(Path::new(&path))?;
+                if Path::new(&path).components().count() != 1 {
+                    return Err("Invalid environment identity".into());
+                }
+                baseline.environments.insert(id.clone(), path);
+            }
+        }
         Ok((baseline, warnings))
     }
 
     pub fn is_clean(&self, root: &Path) -> Result<bool, String> {
+        let environments = self.local_environments(root)?;
+        if self
+            .environments
+            .keys()
+            .any(|id| environments.get(id) != Some(&self.documents[id]["data"]))
+        {
+            return Ok(false);
+        }
         let local = local_requests(root)?;
         if local.len() != self.files.len() {
             return Ok(false);
@@ -663,6 +700,143 @@ pub struct PushPlan {
     pub baseline: Baseline,
 }
 
+impl Baseline {
+    pub fn local_environments(&self, root: &Path) -> Result<BTreeMap<String, Value>, String> {
+        let mut values = BTreeMap::new();
+        for (id, path) in &self.environments {
+            let file = root.join(path);
+            let metadata = match fs::symlink_metadata(&file) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error.to_string()),
+            };
+            if !metadata.is_file() || metadata.len() > 32 * 1024 * 1024 {
+                return Err(format!(
+                    "Environment {path} must be a regular file under 32 MB"
+                ));
+            }
+            let data: Value =
+                serde_json::from_slice(&fs::read(file).map_err(|error| error.to_string())?)
+                    .map_err(|_| format!("Environment {path} must contain valid JSON"))?;
+            if !data.is_object() {
+                return Err(format!("Environment {path} must contain a JSON object"));
+            }
+            values.insert(id.clone(), data);
+        }
+        Ok(values)
+    }
+}
+
+impl PushPlan {
+    pub fn add_environments(
+        &mut self,
+        baseline: &Baseline,
+        remote: &BTreeMap<String, Value>,
+        local: &BTreeMap<String, Value>,
+    ) -> Result<(), String> {
+        for (id, path) in &baseline.environments {
+            let original = baseline
+                .documents
+                .get(id)
+                .ok_or_else(|| "Sync baseline is missing an environment".to_string())?;
+            if local.get(id) == Some(&original["data"]) {
+                continue;
+            }
+            if remote.get(id).is_some_and(|current| current != original)
+                || (local.contains_key(id) && !remote.contains_key(id))
+            {
+                return Err(format!("Conflict: environment {path} changed on master"));
+            }
+            if let Some(data) = local.get(id) {
+                let mut edited = original.clone();
+                edited["data"] = data.clone();
+                edited["modified"] = json!((crate::storage::now() * 1000.0) as u64);
+                self.changes.insert(id.clone(), Some(edited.clone()));
+                self.baseline.documents.insert(id.clone(), edited);
+            } else {
+                if original["parentId"] == baseline.root_id {
+                    return Err(format!(
+                        "Cannot delete the collection's base environment: {path}"
+                    ));
+                }
+                if remote.values().any(|document| {
+                    document["parentId"] == *id
+                        && (!baseline
+                            .environments
+                            .contains_key(document["_id"].as_str().unwrap_or(""))
+                            || local.contains_key(document["_id"].as_str().unwrap_or("")))
+                }) {
+                    return Err(format!(
+                        "Cannot delete {path}: it still has child resources"
+                    ));
+                }
+                if remote.contains_key(id) {
+                    self.changes.insert(id.clone(), None);
+                }
+                self.baseline.environments.remove(id);
+                self.baseline.documents.remove(id);
+            }
+        }
+        Ok(())
+    }
+}
+
+pub fn environment_vars(
+    root: &Path,
+    path: &str,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    // Ordinary dotenv files remain local and retain their existing parsing rules.
+    if !root.join(STATE).exists() {
+        return fs::read_to_string(root.join(path))
+            .map(|content| vars::parse_env(&content))
+            .map_err(|error| error.to_string());
+    }
+    let baseline = Baseline::load(root)?;
+    let Some((id, _)) = baseline
+        .environments
+        .iter()
+        .find(|(_, tracked)| *tracked == path)
+    else {
+        return fs::read_to_string(root.join(path))
+            .map(|content| vars::parse_env(&content))
+            .map_err(|error| error.to_string());
+    };
+    let local = baseline.local_environments(root)?;
+    let mut chain = Vec::new();
+    let mut current = id.as_str();
+    let mut visited = HashSet::new();
+    while baseline.environments.contains_key(current) {
+        if !visited.insert(current) {
+            return Err("Environment inheritance contains a cycle".into());
+        }
+        let data = local
+            .get(current)
+            .ok_or_else(|| "An inherited environment file is missing".to_string())?;
+        chain.push(
+            data.as_object()
+                .ok_or_else(|| "Invalid environment data".to_string())?,
+        );
+        current = baseline.documents[current]["parentId"]
+            .as_str()
+            .unwrap_or("");
+    }
+    let mut values = std::collections::HashMap::new();
+    for data in chain.into_iter().rev() {
+        for (key, value) in data {
+            values.insert(
+                key.clone(),
+                mercury_templates(
+                    &value
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| value.to_string()),
+                ),
+            );
+        }
+    }
+    Ok(values)
+}
+
 pub fn plan_push(
     baseline: &Baseline,
     remote: &BTreeMap<String, Value>,
@@ -860,11 +1034,21 @@ pub fn install_master(
         fs::set_permissions(&stage, fs::Permissions::from_mode(0o700))
             .map_err(|error| error.to_string())?;
     }
-    // Keep local environment files; they never get uploaded to Insomnia.
+    // Only untracked .env files remain local; replace managed files from master.
+    let previous = root
+        .join(STATE)
+        .exists()
+        .then(|| Baseline::load(root))
+        .transpose()?;
     if root.exists() {
         for entry in fs::read_dir(root).map_err(|error| error.to_string())? {
             let entry = entry.map_err(|error| error.to_string())?;
             if entry.file_name().to_string_lossy().starts_with(".env")
+                && !previous.as_ref().is_some_and(|old| {
+                    old.environments
+                        .values()
+                        .any(|path| Path::new(path) == Path::new(&entry.file_name()))
+                })
                 && entry
                     .file_type()
                     .map_err(|error| error.to_string())?
@@ -876,6 +1060,18 @@ pub fn install_master(
                 )?;
             }
         }
+    }
+    for (id, path) in &baseline.environments {
+        if stage.join(path).exists() {
+            return Err(format!(
+                "Cloud environment would overwrite local file {path}"
+            ));
+        }
+        atomic_write(
+            &stage.join(path),
+            &serde_json::to_vec_pretty(&baseline.documents[id]["data"])
+                .map_err(|error| error.to_string())?,
+        )?;
     }
     for path in baseline.groups.keys() {
         fs::create_dir_all(stage.join(path)).map_err(|error| error.to_string())?;
@@ -894,7 +1090,7 @@ pub fn install_master(
     let backup = parent.join(new_id(".insomnia-backup")?);
     if root.join(STATE).exists() && !Baseline::load(root)?.is_clean(root)? {
         return Err(
-            "Local requests changed during fetch; the existing workspace was retained".into(),
+            "Local requests or environments changed during fetch; the existing workspace was retained".into(),
         );
     }
     if root.exists() {
@@ -1008,11 +1204,135 @@ mod tests {
         assert!(!plan.baseline.files.contains_key("req_example"));
         assert!(!plan.baseline.documents.contains_key("req_example"));
         let root = tempfile::tempdir().unwrap();
+        for (id, path) in &plan.baseline.environments {
+            atomic_write(
+                &root.path().join(path),
+                &serde_json::to_vec(&plan.baseline.documents[id]["data"]).unwrap(),
+            )
+            .unwrap();
+        }
         plan.baseline.save(root.path()).unwrap();
         assert!(Baseline::load(root.path())
             .unwrap()
             .is_clean(root.path())
             .unwrap());
+    }
+
+    #[test]
+    fn environments_roundtrip_inherit_and_push_without_losing_types_or_metadata() {
+        let mut documents = fixture().documents;
+        documents.get_mut("env_example").unwrap()["parentId"] = json!("wrk_example");
+        documents.get_mut("env_example").unwrap()["data"] = json!({"host":"https://example.test", "count": 12, "nested": {"a":true}, "secret":"line one\n\"line two\"\\end"});
+        documents.insert("env_child".into(), json!({"_id":"env_child", "type":"Environment", "parentId":"env_example", "name":"Development", "color":"#123456", "dataPropertyOrder":{"&":["host"]}, "data":{"host":"http://localhost", "template":"{{ _.host }}"}}));
+        let baseline = Baseline::from_master("prj_example", "head", documents)
+            .unwrap()
+            .0;
+        let parent = tempfile::tempdir().unwrap();
+        let root = parent.path().join("collection");
+        install_master(&root, &baseline, &[]).unwrap();
+        assert!(baseline.is_clean(&root).unwrap());
+        assert_eq!(
+            baseline.local_environments(&root).unwrap()["env_example"],
+            baseline.documents["env_example"]["data"]
+        );
+        let vars = environment_vars(&root, &baseline.environments["env_child"]).unwrap();
+        assert_eq!(
+            crate::workspace::env_label(&baseline.environments["env_child"]),
+            "Development"
+        );
+        assert_eq!(crate::workspace::env_label(".env.local"), ".env.local");
+        assert_eq!(vars["host"], "http://localhost");
+        assert_eq!(vars["count"], "12");
+        assert_eq!(vars["secret"], "line one\n\"line two\"\\end");
+        assert_eq!(vars["template"], "{{host}}");
+        let mut local = baseline.local_environments(&root).unwrap();
+        local.get_mut("env_child").unwrap()["host"] = json!("https://new.test");
+        atomic_write(
+            &root.join(&baseline.environments["env_child"]),
+            &serde_json::to_vec(&local["env_child"]).unwrap(),
+        )
+        .unwrap();
+        assert!(!baseline.is_clean(&root).unwrap());
+        assert!(install_master(&root, &baseline, &[]).is_err());
+        let mut plan = plan_push(
+            &baseline,
+            &baseline.documents,
+            &local_requests(&root).unwrap(),
+        )
+        .unwrap();
+        plan.add_environments(&baseline, &baseline.documents, &local)
+            .unwrap();
+        assert_eq!(plan.changes.len(), 1);
+        let edited = plan.changes["env_child"].as_ref().unwrap();
+        assert_eq!(edited["color"], "#123456");
+        assert_eq!(
+            edited["dataPropertyOrder"],
+            baseline.documents["env_child"]["dataPropertyOrder"]
+        );
+        assert_eq!(edited["data"], local["env_child"]);
+        plan.baseline.save(&root).unwrap();
+        assert!(plan.baseline.is_clean(&root).unwrap());
+        let mut remote = baseline.documents.clone();
+        remote.get_mut("env_child").unwrap()["data"]["host"] = json!("teammate");
+        assert!(plan.add_environments(&baseline, &remote, &local).is_err());
+        local.remove("env_example");
+        assert!(plan
+            .add_environments(&baseline, &baseline.documents, &local)
+            .is_err());
+    }
+
+    #[test]
+    fn environment_deletions_validation_and_old_baselines_are_safe() {
+        let baseline = fixture();
+        let parent = tempfile::tempdir().unwrap();
+        let root = parent.path().join("collection");
+        install_master(&root, &baseline, &[]).unwrap();
+        let path = root.join(&baseline.environments["env_example"]);
+        atomic_write(&path, b"[]").unwrap();
+        assert!(baseline.local_environments(&root).is_err());
+        atomic_write(&path, b"{broken").unwrap();
+        assert!(baseline.local_environments(&root).is_err());
+        fs::remove_file(&path).unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink("/etc/hostname", &path).unwrap();
+            assert!(baseline.local_environments(&root).is_err());
+            fs::remove_file(&path).unwrap();
+        }
+        let mut plan = plan_push(
+            &baseline,
+            &baseline.documents,
+            &local_requests(&root).unwrap(),
+        )
+        .unwrap();
+        plan.add_environments(&baseline, &baseline.documents, &BTreeMap::new())
+            .unwrap();
+        assert!(plan.changes["env_example"].is_none());
+        let mut remote = baseline.documents.clone();
+        remote.remove("env_example");
+        let mut plan = plan_push(&baseline, &remote, &local_requests(&root).unwrap()).unwrap();
+        plan.add_environments(&baseline, &remote, &BTreeMap::new())
+            .unwrap();
+        assert!(plan.changes.is_empty());
+        assert!(plan.baseline.environments.is_empty());
+        let mut old = serde_json::to_value(&baseline).unwrap();
+        old.as_object_mut().unwrap().remove("environments");
+        atomic_write(&root.join(STATE), &serde_json::to_vec(&old).unwrap()).unwrap();
+        atomic_write(&root.join(".env.local"), b"host=local-only").unwrap();
+        assert!(Baseline::load(&root).unwrap().is_clean(&root).unwrap());
+        install_master(&root, &baseline, &[]).unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join(".env.local")).unwrap(),
+            "host=local-only"
+        );
+        assert!(baseline.is_clean(&root).unwrap());
+        let mut cyclic = baseline.clone();
+        cyclic.documents.get_mut("env_example").unwrap()["parentId"] = json!("env_example");
+        cyclic.save(&root).unwrap();
+        assert!(environment_vars(&root, &cyclic.environments["env_example"]).is_err());
+        assert!(plan
+            .add_environments(&baseline, &cyclic.documents, &BTreeMap::new())
+            .is_err());
     }
 
     #[test]

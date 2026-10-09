@@ -25,8 +25,11 @@ menu. Pull refuses unpushed edits; push checks cloud conflicts.
 This local fork includes a Rust bridge using Mercury's saved sign-in or the
 installed Insomnia login. All
 cloud reads and pushes target **master**, regardless of Insomnia's active branch.
-The bridge syncs requests and their folder locations; cloud environments stay
-unchanged. Close Mercury while using the terminal commands below, then reopen
+The bridge syncs requests, their folder locations and cloud environments.
+Managed `.env.insomnia-<name>-<id>.json` files preserve JSON types; sub-environments
+inherit base variables. Edit these files and push to share environment changes.
+Ordinary local `.env` files are never uploaded. Close Mercury while using the
+terminal commands below, then reopen
 its workspace. Sync from the bottom bar handles the refresh automatically.
 
 ```bash

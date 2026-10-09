@@ -556,8 +556,8 @@ impl MercuryApp {
         let (Some(root), Some(name)) = (&self.workspace, self.env_name()) else {
             return;
         };
-        match fs::read_to_string(root.join(name)) {
-            Ok(content) => self.env_vars = vars::parse_env(&content),
+        match crate::insomnia_workspace::environment_vars(root, name) {
+            Ok(values) => self.env_vars = values,
             Err(e) => self.notify(format!("Could not read {name}: {e}"), true),
         }
     }
@@ -1284,7 +1284,7 @@ impl MercuryApp {
     fn env_menu(&mut self, ui: &mut egui::Ui) {
         let t = theme();
         let (name, color) = match (self.env_name(), &self.workspace) {
-            (Some(name), _) => (name.to_string(), t.env(name)),
+            (Some(name), _) => (workspace::env_label(name).to_string(), t.env(name)),
             (None, Some(_)) => ("No environment".to_string(), t.text_muted),
             (None, None) => ("No environment".to_string(), t.text_faint),
         };
@@ -1296,7 +1296,7 @@ impl MercuryApp {
             }
             for (i, env) in self.env_files.iter().enumerate() {
                 let check = (self.selected_env == Some(i)).then_some(Icon::Check);
-                if menu_item(ui, check, env, "") {
+                if menu_item(ui, check, workspace::env_label(env), "") {
                     picked = Some(Some(i));
                 }
             }
@@ -1664,7 +1664,7 @@ impl MercuryApp {
         .on_hover_text("Insomnia Cloud Sync · master");
         popup_menu(ui, &trigger, 300.0, |ui| {
             ui.label(strong("Insomnia Cloud Sync"));
-            ui.label(muted("Requests only · master"));
+            ui.label(muted("Requests and environments · master"));
             ui.separator();
             if menu_item(ui, Some(Icon::Layers), "Browse cloud collections…", "") {
                 self.open_cloud_picker();

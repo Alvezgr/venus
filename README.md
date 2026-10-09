@@ -215,7 +215,7 @@ We deliberately don't build cloud sync, team collaboration, AI assistants, plugi
 ### Local fork: Insomnia Cloud bridge
 
 This checkout adds a Rust bridge for an existing Insomnia Cloud collection.
-Mercury's code and workspace stay local; request changes sync with Insomnia's
+Mercury's code stays local; request and environment changes sync with Insomnia's
 **master**. Choose **Sync → Browse cloud collections…** to sign in through your
 browser or use the installed Insomnia login, pick a collection, and download
 master into an empty folder. No export is needed. In a fetched workspace,
@@ -231,7 +231,8 @@ cargo build
 ```
 
 Open the fetched folder in Mercury to edit. Fetch refuses unpushed edits; push
-checks cloud conflicts. Environments remain unchanged. Request files include
+checks cloud conflicts. Cloud environments are downloaded and their edits are
+synced, including base inheritance. Request files include
 an optional `insomnia_id` that Mercury preserves on save and clears on duplicate.
 Build dependencies include OpenSSL development libraries. See
 [INSOMNIA_SYNC.md](INSOMNIA_SYNC.md) for this collection's commands, verification,

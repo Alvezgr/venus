@@ -414,14 +414,16 @@ impl Cloud {
         } else {
             workspace::assign_local_ids(root)?
         };
+        let environments = baseline.local_environments(root)?;
         let (mut snapshot, mut documents) = self.download_master()?;
         let mut plan = workspace::plan_push(&baseline, &documents, &local)?;
+        plan.add_environments(&baseline, &documents, &environments)?;
         if plan.changes.is_empty() {
             if !dry_run {
                 plan.baseline.head = snapshot.id;
                 plan.baseline.save(root)?;
             }
-            return Ok("No local request changes to push".into());
+            return Ok("No local request or environment changes to push".into());
         }
         if dry_run {
             let summaries: Vec<_> = plan
@@ -481,13 +483,15 @@ impl Cloud {
         let pending = PendingPush {
             project_id: self.project_id.clone(),
             snapshot: json!({"id": id, "parent": parent, "created": created, "author": crypto::string(&self.session, "accountId")?,
-                "name": "Update requests from Mercury", "description": "", "state": snapshot.state}),
+                "name": "Update requests and environments from Mercury", "description": "", "state": snapshot.state}),
             documents,
             baseline: plan.baseline,
         };
-        if workspace::local_requests(root)? != local {
+        if workspace::local_requests(root)? != local
+            || baseline.local_environments(root)? != environments
+        {
             return Err(
-                "Local requests changed while planning; retry push after saving edits".into(),
+                "Local requests or environments changed while planning; retry push after saving edits".into(),
             );
         }
         workspace::atomic_write(
@@ -588,8 +592,8 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
         let (baseline, warnings) =
             crate::insomnia_workspace::Baseline::from_master(&args[1], &snapshot.id, documents)?;
         let backup = crate::insomnia_workspace::install_master(&root, &baseline, &warnings)?;
-        Ok(format!("Fetched {} requests from master into {}. {} execution warnings in .insomnia-sync/warnings.txt.{}",
-            baseline.files.len(), root.display(), warnings.len(), if backup.exists() { format!(" Previous workspace: {}", backup.display()) } else { String::new() }))
+        Ok(format!("Fetched {} requests and {} environments from master into {}. {} execution warnings in .insomnia-sync/warnings.txt.{}",
+            baseline.files.len(), baseline.environments.len(), root.display(), warnings.len(), if backup.exists() { format!(" Previous workspace: {}", backup.display()) } else { String::new() }))
     })())
 }
 
@@ -763,6 +767,7 @@ mod tests {
                 documents: BTreeMap::new(),
                 files: BTreeMap::new(),
                 groups: BTreeMap::new(),
+                environments: BTreeMap::new(),
             },
         }
     }

@@ -24,12 +24,21 @@ API_TOKEN="prod token"
 
 ## Choosing an environment
 
-**Only one environment is active at a time.** Files aren't layered or merged. A plain `.env` is not loaded on top of the selected one.
+**Only one environment is active at a time.** Ordinary dotenv files aren't layered or merged. A plain `.env` is not loaded on top of the selected one.
 
 - Pick the environment in the menu at the **top right** of the window. **None** turns variables off.
 - `⌘ E` switches to the next environment. After the last one it goes to None, then starts over.
 - When you open a workspace, Mercury selects the first file (alphabetically) whose name contains `.dev`, or else the first file. When Mercury reopens the workspace at launch, it restores the environment you last had selected.
 - Environment names that contain `prod` are shown in red, and names that contain `stag` in amber, so it's harder to send to production by mistake.
+
+## Insomnia Cloud environments
+
+The Cloud bridge downloads managed `.env.insomnia-<name>-<id>.json` files. Select
+them in the same menu. These files contain JSON objects, preserving native value
+types and multiline strings. Sub-environments inherit their base environment.
+Edit a managed file in your text editor, then **Sync → Push to master** to share
+its changes. Local dotenv files are never uploaded. Keep managed filenames intact;
+adding and renaming cloud environments is not supported yet.
 
 ## File format
 

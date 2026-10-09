@@ -76,6 +76,13 @@ pub fn all_requests(root: &Path) -> Vec<CollectionItem> {
     out
 }
 
+/// Display cloud environment names without their stable identity suffix.
+pub fn env_label(name: &str) -> &str {
+    name.strip_prefix(".env.insomnia-")
+        .and_then(|rest| rest.rsplit_once("-env_").map(|(label, _)| label))
+        .unwrap_or(name)
+}
+
 /// `.env*` files in the workspace root, sorted.
 pub fn env_files(root: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(root)
