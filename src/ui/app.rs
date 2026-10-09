@@ -26,6 +26,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[path = "cloud.rs"]
 mod cloud;
+#[path = "push.rs"]
+mod push;
 
 const ISSUES_URL: &str = "https://github.com/Harry-kp/mercury/issues";
 const RELEASES_URL: &str = "https://github.com/Harry-kp/mercury/releases";
@@ -194,6 +196,7 @@ enum Event {
     FilesChanged,
     Toast(String, bool),
     Synced(PathBuf, Result<String, String>),
+    PushPrepared(PathBuf, Result<(String, String), String>),
     CloudAccount(u64, cloud::AccountResult),
     CloudDownloaded(Result<Option<(PathBuf, String)>, String>),
 }
@@ -287,6 +290,7 @@ pub struct MercuryApp {
     sync_busy: Option<&'static str>,
     sync_result: Option<(String, bool)>,
     cloud_picker: Option<cloud::Picker>,
+    push_dialog: Option<push::PushDialog>,
     /// egui time at the start of this frame (for toasts).
     time: f64,
 
@@ -352,6 +356,7 @@ impl MercuryApp {
             sync_busy: None,
             sync_result: None,
             cloud_picker: None,
+            push_dialog: None,
             time: 0.0,
             ctx: ctx.clone(),
             tx,
@@ -889,6 +894,7 @@ impl MercuryApp {
                 Event::FilesChanged => files_changed = true,
                 Event::Toast(text, is_error) => self.notify(text, is_error),
                 Event::Synced(root, result) => self.finish_sync(root, result),
+                Event::PushPrepared(root, result) => self.on_push_prepared(root, result),
                 Event::CloudAccount(id, result) => self.on_cloud_account(id, result),
                 Event::CloudDownloaded(result) => self.on_cloud_download(result),
             }
@@ -1143,7 +1149,7 @@ impl MercuryApp {
 
     fn handle_keys(&mut self, ctx: &egui::Context) {
         // the palette owns the keyboard while it is open
-        if self.palette.is_some() || self.cloud_picker.is_some() {
+        if self.palette.is_some() || self.cloud_picker.is_some() || self.push_dialog.is_some() {
             return;
         }
         let typing = ctx.wants_keyboard_input();
@@ -1552,6 +1558,7 @@ impl MercuryApp {
         self.handle_keys(ctx);
         self.show_dialog(ctx);
         self.show_cloud_picker(ctx);
+        self.show_push_dialog(ctx);
         self.command_palette(ctx);
     }
 }
@@ -1602,14 +1609,28 @@ impl MercuryApp {
             "Pushing to master…"
         });
         self.sync_result = None;
+        let push_options = self
+            .push_dialog
+            .as_ref()
+            .map(|dialog| (dialog.message.clone(), dialog.fingerprint.clone()));
         self.spawn(move || {
+            if !pull {
+                let (message, fingerprint) = push_options.unwrap_or_else(|| {
+                    ("Update requests and environments from Mercury".into(), None)
+                });
+                let result =
+                    crate::insomnia_workspace::SyncLock::acquire(&root).and_then(|_lock| {
+                        crate::insomnia_sync::Cloud::connect(&project)?.push(
+                            &root,
+                            false,
+                            &message,
+                            fingerprint.as_deref(),
+                        )
+                    });
+                return Some(Event::Synced(root, result));
+            }
             let args = vec![
-                if pull {
-                    "--insomnia-fetch"
-                } else {
-                    "--insomnia-push"
-                }
-                .into(),
+                "--insomnia-fetch".into(),
                 project,
                 root.to_string_lossy().into_owned(),
             ];
@@ -1622,6 +1643,14 @@ impl MercuryApp {
 
     fn finish_sync(&mut self, root: PathBuf, result: Result<String, String>) {
         self.sync_busy = None;
+        if let Some(dialog) = self.push_dialog.as_mut() {
+            if let Err(error) = &result {
+                dialog.error = Some(error.clone());
+                dialog.fingerprint = None;
+            } else {
+                self.push_dialog = None;
+            }
+        }
         if self.workspace.as_ref() == Some(&root) {
             let selected = self.current_file.clone();
             let env = self.env_name().map(str::to_string);
@@ -1674,7 +1703,7 @@ impl MercuryApp {
                     self.start_sync(true);
                 }
                 if menu_item(ui, Some(Icon::Sync), "Push to master", "") {
-                    self.start_sync(false);
+                    self.open_push_dialog();
                 }
             });
             if !connected {

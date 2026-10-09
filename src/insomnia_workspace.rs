@@ -16,6 +16,24 @@ use std::{
 
 pub const STATE: &str = ".insomnia-sync/baseline.json";
 
+pub fn push_fingerprint(root: &Path) -> Result<String, String> {
+    let baseline = Baseline::load(root)?;
+    let mut requests = local_requests(root)?;
+    for request in requests.values_mut() {
+        if request
+            .insomnia_id
+            .as_ref()
+            .is_none_or(|id| !baseline.files.contains_key(id))
+        {
+            request.insomnia_id = None;
+        }
+    }
+    let environments = baseline.local_environments(root)?;
+    let bytes = serde_json::to_vec(&(baseline, requests, environments))
+        .map_err(|error| error.to_string())?;
+    Ok(crypto::hex(&openssl::sha::sha256(&bytes)))
+}
+
 pub struct SyncLock(fs::File);
 
 impl SyncLock {
@@ -1144,6 +1162,38 @@ mod tests {
         Baseline::from_master("prj_example", "head", documents)
             .unwrap()
             .0
+    }
+
+    #[test]
+    fn preview_fingerprint_covers_changes_but_survives_new_identity_assignment() {
+        let baseline = fixture();
+        let parent = tempfile::tempdir().unwrap();
+        let root = parent.path().join("collection");
+        install_master(&root, &baseline, &[]).unwrap();
+        let original = push_fingerprint(&root).unwrap();
+        atomic_write(
+            &root.join("New.json"),
+            RequestFile::default().to_json().as_bytes(),
+        )
+        .unwrap();
+        let added = push_fingerprint(&root).unwrap();
+        assert_ne!(added, original);
+        assign_local_ids(&root).unwrap();
+        assert_eq!(push_fingerprint(&root).unwrap(), added);
+        atomic_write(
+            &root.join(&baseline.environments["env_example"]),
+            br#"{"host":"new"}"#,
+        )
+        .unwrap();
+        assert_ne!(push_fingerprint(&root).unwrap(), added);
+        let cloud =
+            crate::insomnia_sync::Cloud::from_session("prj_example", json!({"id":"example"}))
+                .unwrap();
+        assert!(cloud
+            .push(&root, false, "Update environment", Some(&added))
+            .unwrap_err()
+            .contains("changed since the preview"));
+        assert!(!root.join(crate::insomnia_sync::PENDING).exists());
     }
 
     #[test]

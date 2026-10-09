@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Review collection changes before pushing, with a custom cloud commit title
+  and description, stale-preview checks, and interrupted-push recovery.
 - Download and push Insomnia Cloud environments as managed JSON files, with
   base inheritance, native value types, conflict checks and local dotenv retention.
 - Browser sign-in and a searchable Insomnia Cloud collection picker. Choose a

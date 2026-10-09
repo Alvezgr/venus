@@ -18,7 +18,10 @@ download master. No collection export or project ID is needed for this flow.
 
 In a workspace fetched by the bridge, click the sync arrows and **master** in
 the bottom bar. Choose **Pull from master** to download updates or **Push to
-master** to share request changes. Mercury saves the open request, pauses editing
+master** to review saved request and environment changes. Write a commit message
+in the dialog, then confirm the push. The first line is the cloud commit title
+and remaining lines are its description. All saved changes are included; changes
+after the preview require a fresh review. Mercury saves the open request, pauses editing
 during sync, and refreshes the workspace afterward. Errors remain in the sync
 menu. Pull refuses unpushed edits; push checks cloud conflicts.
 

@@ -41,7 +41,7 @@ cargo build
 ./target/debug/mercury --insomnia-collections
 ./target/debug/mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
 ./target/debug/mercury --insomnia-plan <cloud-project-id> <workspace-folder>
-./target/debug/mercury --insomnia-push <cloud-project-id> <workspace-folder>
+./target/debug/mercury --insomnia-push <cloud-project-id> <workspace-folder> "Describe changes"
 ```
 
 The optional CLI project ID starts with `prj_`; `--insomnia-collections` lists
@@ -55,7 +55,11 @@ workspace, the control shows **Sync** and offers **Open synced workspace…**.
 Once connected, it shows **master**, with these actions:
 
 - **Pull from master** downloads collection updates.
-- **Push to master** shares saved request and environment changes with the team.
+- **Push to master** opens a preview of saved request and environment changes.
+  Enter a commit message, then confirm **Push to master** to share them with the team.
+  The first line is the cloud commit title; remaining lines become its description.
+  All saved changes are included. A blank message disables push (maximum 4096 bytes).
+  If collection files change after review, choose **Review again** before pushing.
 
 Mercury saves the open request first, pauses editing during sync, and refreshes
 the workspace and file watcher afterward. Errors remain in the sync menu.
@@ -65,6 +69,10 @@ The CLI preview command shows proposed edits without uploading them. Request
 edits, renames, moves, creations and deletions are supported. Duplicating a
 request clears its cloud identity so the next push creates a new request.
 Empty folder edits are outside the sync scope.
+
+The CLI push message is optional; omitting it uses the default Mercury message.
+Interrupted pushes resume with their original message and saved changes, using
+**Resume previous push** in the dialog.
 
 ## Cloud environments
 

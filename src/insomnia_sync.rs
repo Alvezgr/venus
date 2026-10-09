@@ -63,7 +63,7 @@ struct PendingPush {
     baseline: Baseline,
 }
 
-const PENDING: &str = ".insomnia-sync/pending-push.json";
+pub(crate) const PENDING: &str = ".insomnia-sync/pending-push.json";
 
 pub(crate) fn read_session(content: &str) -> Result<Value, String> {
     let mut documents = HashMap::new();
@@ -386,7 +386,26 @@ impl Cloud {
         Ok(format!("Pushed collection changes to master; cloud commit {id}. Run fetch to receive any other master changes."))
     }
 
-    pub fn push(&self, root: &Path, dry_run: bool) -> Result<String, String> {
+    pub fn push(
+        &self,
+        root: &Path,
+        dry_run: bool,
+        message: &str,
+        expected: Option<&str>,
+    ) -> Result<String, String> {
+        let (title, description) = commit_message(message)?;
+        let check_preview = || -> Result<(), String> {
+            if let Some(expected) = expected {
+                if workspace::push_fingerprint(root)? != expected {
+                    return Err(
+                        "Collection changed since the preview; review changes again before pushing"
+                            .into(),
+                    );
+                }
+            }
+            Ok(())
+        };
+        check_preview()?;
         if root.join(PENDING).exists() {
             if dry_run {
                 return Err(
@@ -431,15 +450,24 @@ impl Cloud {
                 .iter()
                 .map(|(id, document)| match document {
                     Some(document) => format!(
-                        "{}: {} ({id})",
+                        "{} {}: {} ({id})",
                         if documents.contains_key(id) {
                             "Update"
                         } else {
                             "Create"
                         },
+                        document["type"].as_str().unwrap_or("resource"),
                         document["name"].as_str().unwrap_or("resource")
                     ),
-                    None => format!("Delete: {id}"),
+                    None => format!(
+                        "Delete {}: {} ({id})",
+                        baseline.documents[id]["type"]
+                            .as_str()
+                            .unwrap_or("resource"),
+                        baseline.documents[id]["name"]
+                            .as_str()
+                            .unwrap_or("resource")
+                    ),
                 })
                 .collect();
             return Ok(format!(
@@ -483,7 +511,7 @@ impl Cloud {
         let pending = PendingPush {
             project_id: self.project_id.clone(),
             snapshot: json!({"id": id, "parent": parent, "created": created, "author": crypto::string(&self.session, "accountId")?,
-                "name": "Update requests and environments from Mercury", "description": "", "state": snapshot.state}),
+                "name": title, "description": description, "state": snapshot.state}),
             documents,
             baseline: plan.baseline,
         };
@@ -494,12 +522,22 @@ impl Cloud {
                 "Local requests or environments changed while planning; retry push after saving edits".into(),
             );
         }
+        check_preview()?;
         workspace::atomic_write(
             &root.join(PENDING),
             &serde_json::to_vec_pretty(&pending).map_err(|error| error.to_string())?,
         )?;
         self.publish_pending(root, pending)
     }
+}
+
+pub(crate) fn commit_message(message: &str) -> Result<(&str, &str), String> {
+    let message = message.trim();
+    if message.is_empty() || message.len() > 4096 {
+        return Err("Enter a commit message between 1 and 4096 bytes".into());
+    }
+    let (title, description) = message.split_once('\n').unwrap_or((message, ""));
+    Ok((title.trim(), description.trim()))
 }
 
 fn validate_master(branch: &Branch) -> Result<&str, String> {
@@ -544,7 +582,7 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
             "--insomnia-fetch" | "--insomnia-push" | "--insomnia-plan" => 3,
             _ => return Err("Unknown Insomnia command".into()),
         };
-        if args.len() != required {
+        if args.len() != required && !(command == "--insomnia-push" && args.len() == 4) {
             return Err(format!(
                 "Usage: mercury {command} <cloud-project-id>{}",
                 if required == 3 {
@@ -583,7 +621,14 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
             .join(&args[2]);
         let _lock = workspace::SyncLock::acquire(&root)?;
         if command == "--insomnia-push" || command == "--insomnia-plan" {
-            return cloud.push(&root, command == "--insomnia-plan");
+            return cloud.push(
+                &root,
+                command == "--insomnia-plan",
+                args.get(3)
+                    .map(String::as_str)
+                    .unwrap_or("Update requests and environments from Mercury"),
+                None,
+            );
         }
         if root.join(PENDING).exists() {
             return Err("A pending push must be reconciled before fetching; run push first".into());
@@ -600,6 +645,20 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn commit_messages_keep_title_and_details_and_reject_empty_or_oversized_text() {
+        assert_eq!(
+            commit_message("  Update PDF URL\n\nUse the new ID.  ").unwrap(),
+            ("Update PDF URL", "Use the new ID.")
+        );
+        assert_eq!(
+            commit_message("Fix environments").unwrap(),
+            ("Fix environments", "")
+        );
+        assert!(commit_message(" \n ").is_err());
+        assert!(commit_message(&"a".repeat(4097)).is_err());
+    }
 
     #[test]
     fn collections_include_paginated_teams_and_deduplicate_projects() {
