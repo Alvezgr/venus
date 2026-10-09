@@ -9,7 +9,7 @@ pub const TIMEOUT_SECS: u64 = 30;
 pub const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
 /// Text bodies larger than this are not rendered inline: highlighting
 /// thousands of spans per frame would drop the UI below 60fps.
-pub const MAX_INLINE_SIZE: usize = 100 * 1024;
+pub const MAX_INLINE_SIZE: usize = 148 * 1024;
 
 /// How the response panel renders a body. Serialized by name in history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -421,6 +421,11 @@ mod tests {
 
     #[test]
     fn size_limits() {
+        let at_limit = vec![b'a'; 148 * 1024];
+        assert_eq!(
+            detect_response_type("text/plain", &at_limit, 200),
+            PlainText
+        );
         let big = vec![b'a'; MAX_INLINE_SIZE + 1];
         assert_eq!(
             detect_response_type("application/json", &big, 200),

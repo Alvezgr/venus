@@ -21,9 +21,9 @@ Two constants in `src/http.rs` control how much of a response Mercury handles:
 | Limit | Value | What happens |
 |-------|-------|--------------|
 | `MAX_RESPONSE_SIZE` | 10 MB | If the server's `Content-Length` is larger, the body isn't downloaded and the panel shows **Response Too Large**. |
-| `MAX_INLINE_SIZE` | 100 KB | Text bodies larger than this aren't shown in the panel. You get a **Save** link so you can open the body in an editor. |
+| `MAX_INLINE_SIZE` | 148 KB | Text bodies larger than this aren't shown in the panel. You get a **Save** link so you can open the body in an editor. |
 
-The inline limit exists because syntax highlighting builds thousands of text spans every frame, and a large highlighted body would drop the UI below 60 fps. For the same reason, a body that grows past 100 KB when pretty-printed is shown without highlighting.
+The inline limit exists because syntax highlighting builds thousands of text spans every frame, and a large highlighted body would drop the UI below 60 fps. For the same reason, a body that grows past 148 KB when pretty-printed is shown without highlighting.
 
 Images and binary content (PDF, audio, video, archives, `application/octet-stream`) are never rendered inline. Use **Save** to write them to disk.
 

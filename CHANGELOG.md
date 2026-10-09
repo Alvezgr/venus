@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A bottom-bar sync menu pulls master and pushes request changes directly from
   fetched workspaces, with background sync, error details and automatic refresh.
 
+### Changed
+- Raised the inline response-body limit from 100 KB to 148 KB.
+
 ## [0.3.1] - 2026-09-29
 
 ### Fixed
