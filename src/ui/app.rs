@@ -11,6 +11,7 @@ use super::widgets::{
 };
 use crate::http::{self, HttpResponse};
 use crate::import::{self, ImportCount};
+use crate::insomnia_workspace::Baseline;
 use crate::kv::{self, KeyValue};
 use crate::model::{
     AppState, CollectionItem, HistoryEntry, HistorySummary, HttpMethod, RecentRequest, Request,
@@ -189,6 +190,7 @@ enum Event {
     Imported(Result<(PathBuf, ImportCount), String>),
     FilesChanged,
     Toast(String, bool),
+    Synced(PathBuf, Result<String, String>),
 }
 
 pub struct Importer {
@@ -225,6 +227,7 @@ pub struct MercuryApp {
 
     // Request form. `headers_text` is the source of truth for headers AND auth.
     pub current_file: Option<PathBuf>,
+    insomnia_id: Option<String>,
     pub method: HttpMethod,
     pub url: String,
     pub query_params: Vec<KeyValue>,
@@ -275,6 +278,9 @@ pub struct MercuryApp {
     pub dialog: Option<Dialog>,
     pub dialog_text: String,
     pub toast: Option<Toast>,
+    sync_project: Option<String>,
+    sync_busy: Option<&'static str>,
+    sync_result: Option<(String, bool)>,
     /// egui time at the start of this frame (for toasts).
     time: f64,
 
@@ -299,6 +305,7 @@ impl MercuryApp {
             env_vars: HashMap::new(),
             watcher: None,
             current_file: None,
+            insomnia_id: None,
             method: HttpMethod::GET,
             url: String::new(),
             query_params: Vec::new(),
@@ -335,6 +342,9 @@ impl MercuryApp {
             dialog: None,
             dialog_text: String::new(),
             toast: None,
+            sync_project: None,
+            sync_busy: None,
+            sync_result: None,
             time: 0.0,
             ctx: ctx.clone(),
             tx,
@@ -448,6 +458,10 @@ impl MercuryApp {
             return;
         }
         self.env_files = workspace::env_files(&path);
+        self.sync_project = Baseline::load(&path)
+            .ok()
+            .map(|baseline| baseline.project_id);
+        self.sync_result = None;
         self.selected_env = env
             .and_then(|name| self.env_files.iter().position(|f| f == name))
             .or_else(|| self.env_files.iter().position(|f| f.contains(".dev")))
@@ -496,6 +510,8 @@ impl MercuryApp {
     /// Forget the workspace without touching the request being edited: it
     /// becomes an unsaved request, which is what it now is on disk.
     fn close_workspace(&mut self) {
+        self.sync_project = None;
+        self.sync_result = None;
         self.watcher = None;
         self.workspace = None;
         self.tree.clear();
@@ -575,6 +591,7 @@ impl MercuryApp {
             url: self.url.clone(),
             headers: kv::headers_to_map(&self.headers_text),
             body: self.body_text.clone(),
+            insomnia_id: self.insomnia_id.clone(),
         }
         .to_json()
     }
@@ -585,6 +602,11 @@ impl MercuryApp {
 
     /// Replace the whole form (file, history, recent, new request).
     pub fn load_request(&mut self, request: Request, file: Option<PathBuf>) {
+        self.insomnia_id = file
+            .as_ref()
+            .and_then(|path| fs::read_to_string(path).ok())
+            .and_then(|content| RequestFile::from_json(&content).ok())
+            .and_then(|request| request.insomnia_id);
         self.method = request.method;
         self.url = request.url;
         self.headers_text = request.headers;
@@ -700,6 +722,7 @@ impl MercuryApp {
             url: vars::substitute(&self.url, &self.env_vars),
             headers: kv::headers_to_map(&vars::substitute(&self.headers_text, &self.env_vars)),
             body: vars::substitute(&self.body_text, &self.env_vars),
+            insomnia_id: None,
         };
         self.request_counter += 1;
         let id = self.request_counter;
@@ -858,9 +881,10 @@ impl MercuryApp {
                 Event::Imported(Err(e)) => self.notify(e, true),
                 Event::FilesChanged => files_changed = true,
                 Event::Toast(text, is_error) => self.notify(text, is_error),
+                Event::Synced(root, result) => self.finish_sync(root, result),
             }
         }
-        if files_changed {
+        if files_changed && self.sync_busy.is_none() {
             self.on_files_changed();
         }
     }
@@ -1316,6 +1340,7 @@ impl MercuryApp {
                 );
                 ui.horizontal_centered(|ui| {
                     ui.spacing_mut().item_spacing.x = Space::SM;
+                    self.sync_menu(ui);
                     match &self.workspace {
                         Some(path) => {
                             widgets::glyph(ui, Icon::Folder, 12.0, t.text_faint);
@@ -1327,6 +1352,9 @@ impl MercuryApp {
                         }
                     }
 
+                    if self.sync_busy.is_some() {
+                        return;
+                    }
                     ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
                         ui.spacing_mut().item_spacing.x = Space::SM;
                         if widgets::link(ui, faint("Shortcuts"))
@@ -1390,6 +1418,7 @@ fn chip(
         ui.fonts_mut(|f| f.layout_no_wrap(text.clone(), theme::semibold(Text::SMALL), color));
     let size = Vec2::new(galley.size().x + 14.0 + Space::SM + Space::MD * 2.0, 26.0);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    widgets::focus_ring(ui, rect, &response);
     if response.hovered() {
         ui.painter().rect_filled(rect, Radius::SM, t.hover);
     }
@@ -1474,12 +1503,29 @@ impl MercuryApp {
         );
         self.handle_events();
 
+        if let Some(busy) = self.sync_busy {
+            self.status_bar(ctx);
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.centered_and_justified(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(busy);
+                    });
+                });
+            });
+            return;
+        }
+
         if self.has_unsaved_changes() && self.time - self.last_save > AUTOSAVE_SECS {
             self.save_file();
         }
 
         self.top_bar(ctx);
         self.status_bar(ctx);
+        if self.sync_busy.is_some() {
+            ctx.request_repaint();
+            return;
+        }
         if !self.focus_mode {
             self.sidebar(ctx);
         }
@@ -1527,9 +1573,214 @@ impl eframe::App for MercuryApp {
     }
 }
 
+impl MercuryApp {
+    fn start_sync(&mut self, pull: bool) {
+        if self.sync_busy.is_some() {
+            return;
+        }
+        let (Some(root), Some(project)) = (self.workspace.clone(), self.sync_project.clone())
+        else {
+            return;
+        };
+        if self.has_unsaved_changes() && !self.save_file() {
+            return;
+        }
+        self.watcher = None;
+        self.sync_busy = Some(if pull {
+            "Pulling master…"
+        } else {
+            "Pushing to master…"
+        });
+        self.sync_result = None;
+        self.spawn(move || {
+            let args = vec![
+                if pull {
+                    "--insomnia-fetch"
+                } else {
+                    "--insomnia-push"
+                }
+                .into(),
+                project,
+                root.to_string_lossy().into_owned(),
+            ];
+            Some(Event::Synced(
+                root,
+                crate::insomnia_sync::run_cli(&args).unwrap(),
+            ))
+        });
+    }
+
+    fn finish_sync(&mut self, root: PathBuf, result: Result<String, String>) {
+        self.sync_busy = None;
+        if self.workspace.as_ref() == Some(&root) {
+            let selected = self.current_file.clone();
+            let env = self.env_name().map(str::to_string);
+            self.open_workspace(root, env.as_deref());
+            // Clear the old form before loading: its autosave must not overwrite fetched data.
+            if let Some(file) = selected {
+                self.load_request(Request::default(), None);
+                if file.is_file() {
+                    self.open_file(&file);
+                }
+            }
+        }
+        let (message, is_error) = match result {
+            Ok(message) => (message, false),
+            Err(error) => (error, true),
+        };
+        self.notify(&message, is_error);
+        self.sync_result = Some((message, is_error));
+    }
+
+    fn sync_menu(&mut self, ui: &mut egui::Ui) {
+        if let Some(busy) = self.sync_busy {
+            ui.spinner();
+            ui.label(muted(busy));
+            return;
+        }
+        let color = if self.sync_result.as_ref().is_some_and(|(_, error)| *error) {
+            theme().error
+        } else {
+            theme().text_muted
+        };
+        let connected = self.sync_project.is_some();
+        let trigger = chip(
+            ui,
+            Icon::Sync,
+            if connected { "master" } else { "Sync" },
+            color,
+            true,
+        )
+        .on_hover_text("Insomnia Cloud Sync · master");
+        popup_menu(ui, &trigger, 300.0, |ui| {
+            ui.label(strong("Insomnia Cloud Sync"));
+            ui.label(muted("Requests only · master"));
+            ui.separator();
+            ui.add_enabled_ui(connected, |ui| {
+                if menu_item(ui, Some(Icon::Download), "Pull from master", "") {
+                    self.start_sync(true);
+                }
+                if menu_item(ui, Some(Icon::Sync), "Push to master", "") {
+                    self.start_sync(false);
+                }
+            });
+            if !connected {
+                ui.separator();
+                ui.label(muted(
+                    "Open a workspace previously fetched from Insomnia Cloud to enable sync.",
+                ));
+                if menu_item(ui, Some(Icon::Folder), "Open synced workspace…", "") {
+                    self.pick_folder();
+                }
+            }
+            if let Some((message, error)) = &self.sync_result {
+                ui.separator();
+                ui.label(egui::RichText::new(message).color(if *error {
+                    theme().error
+                } else {
+                    theme().text_muted
+                }));
+            }
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sync_menu_and_completion_refresh_without_overwriting_downloads() {
+        use egui_kittest::{kittest::Queryable, Harness};
+        use std::collections::BTreeMap;
+        let root = tempfile::tempdir().unwrap();
+        let documents = BTreeMap::from([
+            (
+                "wrk_test".into(),
+                serde_json::json!({"_id":"wrk_test", "type":"Workspace", "name":"Test"}),
+            ),
+            (
+                "req_test".into(),
+                serde_json::json!({"_id":"req_test", "type":"Request", "name":"Example", "parentId":"wrk_test", "method":"GET", "url":"https://example.com/old"}),
+            ),
+        ]);
+        let (baseline, warnings) = Baseline::from_master("prj_test", "head", documents).unwrap();
+        crate::insomnia_workspace::install_master(root.path(), &baseline, &warnings).unwrap();
+        let file = root.path().join(&baseline.files["req_test"].path);
+        let ctx = egui::Context::default();
+        let mut app = MercuryApp::new(&ctx);
+        app.open_workspace(root.path().into(), None);
+        app.open_file(&file);
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(1000.0, 700.0))
+            .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+        harness.run_steps(2);
+        harness.get_by_label("master").click();
+        harness.run_steps(2);
+        harness.get_by_role_and_label(egui::accesskit::Role::Button, "Pull from master");
+        harness.get_by_role_and_label(egui::accesskit::Role::Button, "Push to master");
+
+        harness.state_mut().sync_busy = Some("Pulling master…");
+        harness.state_mut().watcher = None;
+        harness.run_steps(2);
+        assert!(harness.query_by_label("Send").is_none());
+        let mut downloaded = RequestFile::from_json(&fs::read_to_string(&file).unwrap()).unwrap();
+        downloaded.url = "https://example.com/new".into();
+        fs::write(&file, downloaded.to_json()).unwrap();
+        harness
+            .state()
+            .tx
+            .send(Event::Synced(
+                root.path().into(),
+                Ok("Pulled master".into()),
+            ))
+            .unwrap();
+        harness.run_steps(2);
+        assert_eq!(harness.state().url, downloaded.url);
+        assert_eq!(harness.state().insomnia_id.as_deref(), Some("req_test"));
+        assert!(!harness.state().has_unsaved_changes());
+        assert!(harness.state().watcher.is_some());
+        assert_eq!(
+            RequestFile::from_json(&fs::read_to_string(&file).unwrap()).unwrap(),
+            downloaded
+        );
+
+        harness.state_mut().sync_busy = Some("Pushing to master…");
+        harness
+            .state()
+            .tx
+            .send(Event::Synced(
+                root.path().into(),
+                Err("Conflict: preserve your edit and fetch".into()),
+            ))
+            .unwrap();
+        harness.run_steps(2);
+        assert!(harness.state().sync_busy.is_none());
+        assert!(harness.state().sync_result.as_ref().unwrap().1);
+        assert!(harness.state().watcher.is_some());
+
+        fs::remove_file(&file).unwrap();
+        harness
+            .state_mut()
+            .finish_sync(root.path().into(), Ok("Pulled deletion".into()));
+        assert!(harness.state().current_file.is_none());
+        assert!(!file.exists());
+    }
+
+    #[test]
+    fn sync_stops_when_the_open_request_cannot_be_saved() {
+        let root = tempfile::tempdir().unwrap();
+        let mut app = MercuryApp::new(&egui::Context::default());
+        app.open_workspace(root.path().into(), None);
+        app.sync_project = Some("prj_test".into());
+        app.current_file = Some(root.path().join("missing/request.json"));
+        app.url = "https://example.com/edited".into();
+        app.saved_content = Some(String::new());
+        app.start_sync(false);
+        assert!(app.sync_busy.is_none());
+        assert!(app.toast.as_ref().unwrap().is_error);
+        assert!(app.watcher.is_some());
+    }
 
     #[test]
     fn shortcuts_are_unique() {

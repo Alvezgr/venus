@@ -329,6 +329,7 @@ mod tests {
                 url: url.to_string(),
                 headers: map,
                 body: String::new(),
+                insomnia_id: None,
             },
         )
     }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A local Rust Insomnia Cloud bridge fetches and pushes collection requests on
+  master using the existing Insomnia login. Includes a preview command, stable
+  request IDs, conflict checks, backups, and recovery of interrupted pushes.
+  Cloud environments and Insomnia-only request configuration are preserved.
+- A bottom-bar sync menu pulls master and pushes request changes directly from
+  fetched workspaces, with background sync, error details and automatic refresh.
+
 ## [0.3.1] - 2026-09-29
 
 ### Fixed

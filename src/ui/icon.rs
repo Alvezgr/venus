@@ -35,6 +35,7 @@ pub enum Icon {
     Pencil,
     Copy,
     Download,
+    Sync,
     Sparkle,
     Check,
     Close,
@@ -62,7 +63,7 @@ pub enum Icon {
 impl Icon {
     /// Every icon, so the geometry check can't silently miss a new one.
     #[cfg(test)]
-    pub const ALL: [Icon; 32] = [
+    pub const ALL: [Icon; 33] = [
         Icon::ChevronRight,
         Icon::ChevronDown,
         Icon::Folder,
@@ -73,6 +74,7 @@ impl Icon {
         Icon::Pencil,
         Icon::Copy,
         Icon::Download,
+        Icon::Sync,
         Icon::Sparkle,
         Icon::Check,
         Icon::Close,
@@ -100,6 +102,12 @@ impl Icon {
     fn geometry(self) -> &'static [Geo] {
         use Geo::*;
         match self {
+            Icon::Sync => &[
+                Line(&[(4.0, 10.0), (4.0, 6.0), (18.0, 6.0), (21.0, 9.0)]),
+                Line(&[(17.0, 9.0), (21.0, 9.0), (21.0, 5.0)]),
+                Line(&[(20.0, 14.0), (20.0, 18.0), (6.0, 18.0), (3.0, 15.0)]),
+                Line(&[(7.0, 15.0), (3.0, 15.0), (3.0, 19.0)]),
+            ],
             Icon::ChevronRight => &[Line(&[(9.5, 5.0), (16.5, 12.0), (9.5, 19.0)])],
             Icon::ChevronDown => &[Line(&[(5.0, 9.5), (12.0, 16.5), (19.0, 9.5)])],
             Icon::Folder => &[Shape(&[

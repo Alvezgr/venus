@@ -70,6 +70,9 @@ pub struct RequestFile {
     pub headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub body: String,
+    /// Stable cloud identity; absent on ordinary Mercury requests.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insomnia_id: Option<String>,
 }
 
 impl RequestFile {
@@ -189,6 +192,7 @@ mod tests {
         let r = RequestFile::from_json(r#"{"method": "GET", "url": "https://a.com"}"#).unwrap();
         assert_eq!(r.method, HttpMethod::GET);
         assert!(r.headers.is_empty() && r.body.is_empty());
+        assert!(r.insomnia_id.is_none());
 
         let r = RequestFile::from_json(
             r#"{"method":"POST","url":"u","headers":{"B":"2","A":"1"},"body":"x"}"#,
@@ -211,6 +215,11 @@ mod tests {
         let json = r.to_json();
         assert!(json.find("Alpha").unwrap() < json.find("Zeta").unwrap());
         assert_eq!(RequestFile::from_json(&json).unwrap(), r);
+        r.insomnia_id = Some("req_example".into());
+        assert_eq!(
+            RequestFile::from_json(&r.to_json()).unwrap().insomnia_id,
+            r.insomnia_id
+        );
     }
 
     #[test]

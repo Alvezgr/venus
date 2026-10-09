@@ -4,7 +4,10 @@
 
 use super::app::{Dialog, MercuryApp};
 use eframe::egui::{self, accesskit, Key, Modifiers};
-use egui_kittest::{kittest::Queryable, Harness};
+use egui_kittest::{
+    kittest::{NodeT, Queryable},
+    Harness,
+};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::time::Duration;
@@ -73,7 +76,7 @@ fn open_send_edit_and_save() {
     let file = ws.join("users/list-users.json");
     std::fs::write(
         &file,
-        r#"{"method":"GET","url":"{{BASE}}/users?q=caf%C3%A9","headers":{"Authorization":"Bearer {{TOKEN}}"}}"#,
+        r#"{"method":"GET","url":"{{BASE}}/users?q=caf%C3%A9","headers":{"Authorization":"Bearer {{TOKEN}}"},"insomnia_id":"req_example"}"#,
     )
     .unwrap();
 
@@ -85,6 +88,22 @@ fn open_send_edit_and_save() {
         .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
     harness.run_steps(2);
     assert_eq!(harness.state().env_name(), Some(".env.dev"));
+
+    harness
+        .get_by_role_and_label(accesskit::Role::Button, "Sync")
+        .click();
+    harness.run_steps(2);
+    harness.get_by_role_and_label(accesskit::Role::Button, "Open synced workspace…");
+    assert!(harness
+        .get_by_role_and_label(accesskit::Role::Button, "Pull from master")
+        .accesskit_node()
+        .is_disabled());
+    assert!(harness
+        .get_by_role_and_label(accesskit::Role::Button, "Push to master")
+        .accesskit_node()
+        .is_disabled());
+    harness.key_press(Key::Escape);
+    harness.run_steps(2);
 
     // Every control Mercury draws by hand has to name itself in the
     // accessibility tree, or it reaches a screen reader — and the keyboard
@@ -196,6 +215,9 @@ fn open_send_edit_and_save() {
     harness.key_press_modifiers(Modifiers::COMMAND, Key::S);
     harness.run_steps(2);
     assert!(!harness.state().has_unsaved_changes());
+    let saved =
+        crate::model::RequestFile::from_json(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    assert_eq!(saved.insomnia_id.as_deref(), Some("req_example"));
     assert!(std::fs::read_to_string(&file).unwrap().contains("&x?"));
 
     // the filter reaches requests inside folders that were never expanded

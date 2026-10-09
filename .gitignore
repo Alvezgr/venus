@@ -7,3 +7,9 @@
 *.log
 .DS_Store
 .claude/settings.local.json
+/silicon-mercury/
+/.insomnia-fetch_*
+/.insomnia-backup_*
+/*.mercury-sync.lock
+/insomnia-list-req.txt
+/silicon.yaml

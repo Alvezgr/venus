@@ -28,6 +28,7 @@ Each request is one `.json` file in the workspace that holds a single JSON objec
 | `url` | string | Yes | The full URL, including `http://` or `https://`. May contain `{{variables}}`. |
 | `headers` | object | No | Header name → value, both strings. Missing means no headers. |
 | `body` | string | No | The raw request body. Missing means no body. |
+| `insomnia_id` | string | No | Stable Insomnia request ID in a cloud-backed workspace. Preserve it when editing; duplicating a request in Mercury clears it so the copy gets a new ID on push. |
 
 The smallest valid file:
 

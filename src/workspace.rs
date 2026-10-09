@@ -165,7 +165,13 @@ pub fn duplicate(path: &Path) -> Result<PathBuf, String> {
         .map(|n| path.with_file_name(format!("{stem}_copy{n}.{ext}")))
         .find(|p| !p.exists())
         .expect("an unused name exists");
-    fs::copy(path, &new_path).map_err(|e| format!("Could not duplicate: {e}"))?;
+    let content = fs::read_to_string(path).map_err(|e| format!("Could not duplicate: {e}"))?;
+    if let Ok(mut request) = RequestFile::from_json(&content) {
+        request.insomnia_id = None;
+        fs::write(&new_path, request.to_json()).map_err(|e| format!("Could not duplicate: {e}"))?;
+    } else {
+        fs::copy(path, &new_path).map_err(|e| format!("Could not duplicate: {e}"))?;
+    }
     Ok(new_path)
 }
 
@@ -264,6 +270,25 @@ mod tests {
         fs::create_dir(dir.path().join("sub")).unwrap();
         fs::write(dir.path().join("sub/.env.nested"), "").unwrap();
         assert_eq!(env_files(dir.path()), vec![".env", ".env.prod"]);
+    }
+
+    #[test]
+    fn duplicating_a_cloud_request_creates_a_new_identity() {
+        let dir = TempDir::new().unwrap();
+        let request = RequestFile {
+            insomnia_id: Some("req_example".into()),
+            ..Default::default()
+        };
+        let path = create_request(dir.path(), "original", &request.to_json()).unwrap();
+        let duplicate = duplicate(&path).unwrap();
+        let copied = RequestFile::from_json(&fs::read_to_string(duplicate).unwrap()).unwrap();
+        assert!(copied.insomnia_id.is_none());
+        assert_eq!(
+            RequestFile::from_json(&fs::read_to_string(path).unwrap())
+                .unwrap()
+                .insomnia_id,
+            request.insomnia_id
+        );
     }
 
     #[test]

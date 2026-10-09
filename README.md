@@ -212,6 +212,28 @@ There's no settings screen. These are fixed:
 
 We deliberately don't build cloud sync, team collaboration, AI assistants, plugins, user accounts or analytics. They aren't missing features; we chose to leave them out.
 
+### Local fork: Insomnia Cloud bridge
+
+This checkout adds a Rust bridge for an existing Insomnia Cloud collection.
+Mercury's code and workspace stay local; request changes sync with Insomnia's
+**master**. Use the existing Insomnia login on Linux. In a fetched workspace,
+click the sync arrows and **master** in the bottom bar to pull or push directly.
+For the initial fetch or terminal commands, close Mercury first:
+
+```bash
+cargo build
+./target/debug/mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
+./target/debug/mercury --insomnia-plan <cloud-project-id> <workspace-folder>
+./target/debug/mercury --insomnia-push <cloud-project-id> <workspace-folder>
+```
+
+Open the fetched folder in Mercury to edit. Fetch refuses unpushed edits; push
+checks cloud conflicts. Environments remain unchanged. Request files include
+an optional `insomnia_id` that Mercury preserves on save and clears on duplicate.
+Build dependencies include OpenSSL development libraries. See
+[INSOMNIA_SYNC.md](INSOMNIA_SYNC.md) for this collection's commands, verification,
+recovery and execution limits.
+
 ---
 
 ## Contributing

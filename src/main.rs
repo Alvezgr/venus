@@ -6,6 +6,9 @@
 mod curl;
 mod http;
 mod import;
+mod insomnia_crypto;
+mod insomnia_sync;
+mod insomnia_workspace;
 mod kv;
 mod model;
 mod storage;
@@ -29,6 +32,17 @@ mod ui {
 use eframe::egui;
 
 fn main() -> eframe::Result {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(result) = insomnia_sync::run_cli(&args) {
+        match result {
+            Ok(message) => println!("{message}"),
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(1);
+            }
+        }
+        return Ok(());
+    }
     let icon = image::load_from_memory(include_bytes!("../assets/icons/icon.png"))
         .expect("bundled icon is a valid PNG")
         .into_rgba8();

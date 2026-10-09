@@ -8,6 +8,48 @@ sidebar_position: 6
 
 Mercury imports Postman and Insomnia exports and cURL commands, and it can copy any request as a cURL command.
 
+## Local Insomnia Cloud bridge (Linux)
+
+In a workspace fetched by the bridge, click the sync arrows and **master** in
+the bottom bar. Choose **Pull from master** to download updates or **Push to
+master** to share request changes. Mercury saves the open request, pauses editing
+during sync, and refreshes the workspace afterward. Errors remain in the sync
+menu. Pull refuses unpushed edits; push checks cloud conflicts.
+
+This local fork includes a Rust bridge using the existing Insomnia login. All
+cloud reads and pushes target **master**, regardless of Insomnia's active branch.
+The bridge syncs requests and their folder locations; cloud environments stay
+unchanged. Close Mercury while using the terminal commands below, then reopen
+its workspace. Sync from the bottom bar handles the refresh automatically.
+
+```bash
+mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
+mercury --insomnia-plan <cloud-project-id> <workspace-folder>
+mercury --insomnia-push <cloud-project-id> <workspace-folder>
+```
+
+Fetch initially requires an empty folder. After fetching, open that folder in
+Mercury and edit requests normally. Plan previews creations, updates and
+deletions without uploading them. Push commits saved changes to master; teammates
+select master and pull in Insomnia. `--insomnia-status <cloud-project-id>` checks
+connectivity and shows master's commit and request counts.
+
+Fetch refuses unpushed request edits and retains the previous workspace in a
+sibling `.insomnia-backup_*` folder. Push refuses conflicting cloud edits. If a
+push is interrupted, repeat push to reconcile the saved pending commit. Preserve
+`.insomnia-sync`, which stores the baseline and recovery data.
+
+Configure local `.env` files separately; they are retained by fetch and never
+uploaded. Digest auth, scripts, multipart/file bodies and Insomnia template tags
+remain in cloud documents but are not executed by Mercury. Each fetch reports
+these limits in `.insomnia-sync/warnings.txt`; unsupported body/header edits are
+rejected to prevent losing configuration.
+
+The bridge uses Insomnia 13.3's internal Cloud Sync protocol. Building this fork
+requires OpenSSL development libraries (on Ubuntu, `libssl-dev` and `pkg-config`).
+Other platforms have not been verified. The file importer remains separate and
+supports the legacy `resources` format, not Insomnia v5 collections.
+
 ## Where imports go
 
 Choose **Import from Postman…** or **Import from Insomnia…** from the workspace menu in the top bar. The empty sidebar also has **Import from ...** links. Pick the export file, and then:
