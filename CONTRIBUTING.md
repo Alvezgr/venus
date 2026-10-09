@@ -1,6 +1,6 @@
-# Contributing to Mercury
+# Contributing to Venus
 
-Thanks for helping. Mercury stays small on purpose, so read this first.
+Thanks for helping. Venus stays small on purpose, so read this first.
 
 ## Philosophy
 
@@ -10,13 +10,14 @@ Thanks for helping. Mercury stays small on purpose, so read this first.
 
 **Welcome:** bug fixes, performance work, clearer errors, accessibility, docs, and deleting code.
 **Discuss first:** UI changes, new shortcuts, file-format changes, new importers.
-**Out of scope:** cloud sync, accounts, collaboration, plugins, GraphQL/gRPC/WebSocket, mock servers, test runners, telemetry, and anything that needs a backend.
+**In scope:** compatibility with existing Insomnia Cloud accounts, collections and environments.
+**Out of scope:** a new hosted sync service, plugins, GraphQL/gRPC/WebSocket, mock servers, test runners, telemetry, and anything that needs a backend.
 
 ## Setup
 
 ```bash
-git clone https://github.com/Harry-kp/mercury && cd mercury
-MERCURY_HOME=$(mktemp -d) cargo run   # isolated app data
+git clone https://github.com/alvezgr/venus.git && cd venus
+VENUS_HOME=$(mktemp -d) cargo run   # isolated app data
 ```
 
 On Linux, install the GTK/xcb dev packages listed in `.github/workflows/ci.yml` first.

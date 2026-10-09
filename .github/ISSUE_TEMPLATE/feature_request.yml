@@ -1,5 +1,5 @@
 name: ✨ Feature Request
-description: Suggest an idea for Mercury
+description: Suggest an idea for Venus
 title: "[Feature]: "
 labels: ["enhancement", "status: todo"]
 body:
@@ -67,7 +67,7 @@ body:
     id: philosophy
     attributes:
       label: 37signals Philosophy Check
-      description: Does this feature align with Mercury's design principles?
+      description: Does this feature align with Venus's design principles?
       options:
         - label: Solves a real pain point (not just nice-to-have)
           required: false
@@ -75,7 +75,7 @@ body:
           required: false
         - label: Fast to implement (< 5 days)
           required: false
-        - label: No cloud/accounts needed (stays local)
+        - label: Uses local files or the existing Insomnia Cloud workflow; no new hosted service
           required: false
         - label: Doesn't bloat the app (< 1MB impact)
           required: false

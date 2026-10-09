@@ -1,9 +1,9 @@
 # CLAUDE.md
 
-Mercury is a native Rust + egui API client. Requests are plain JSON files in a folder the user opens; environments are `.env` files. Product rule: **say no by default** — no accounts, cloud, telemetry, plugins or settings screens. Small, boring, fast. The shortest correct diff wins.
+Venus is a native Rust + egui API client. Requests are plain JSON files in a folder the user opens; environments are `.env` files. Venus is a fork of Mercury for Insomnia users: browser sign-in and Insomnia Cloud request/environment sync are in scope. Product rule: **say no by default** for unrelated features, telemetry, plugins or settings screens. Small, boring, fast. The shortest correct diff wins.
 
 ## Commands (CI runs the last three)
-- Run: `MERCURY_HOME=$(mktemp -d) cargo run` (isolated app data; plain `cargo run` uses your real `~/.mercury`)
+- Run: `VENUS_HOME=$(mktemp -d) cargo run` (isolated app data; plain `cargo run` uses your real `~/.venus`)
 - One test / module: `cargo test kv::` · `cargo test smoke`
 - `cargo fmt --check`
 - `cargo clippy --all-targets -- -D warnings`
@@ -13,7 +13,7 @@ Mercury is a native Rust + egui API client. Requests are plain JSON files in a f
 ## Where code lives (flat, by domain)
 - `src/model.rs` types + on-disk formats · `kv.rs` header/param/Authorization text · `vars.rs` `.env` + `{{var}}`
 - `http.rs` send + classify + format · `curl.rs` paste/copy cURL · `import.rs` Postman/Insomnia
-- `storage.rs` `~/.mercury/*.json` · `workspace.rs` folder scan, file ops, watcher
+- `storage.rs` `~/.venus/*.json` · `workspace.rs` folder scan, file ops, watcher
 - `ui/app.rs` state, frame loop, dialogs, `Action`/`SHORTCUTS` · `ui/{sidebar,editor,response}.rs` panels
 - `ui/palette.rs` the ⌘K command palette · `ui/widgets.rs` shared widgets + highlighters
 - `ui/theme.rs` the two palettes, scales, fonts, egui style · `ui/icon.rs` vector icon geometry
@@ -26,8 +26,8 @@ Mercury is a native Rust + egui API client. Requests are plain JSON files in a f
 - Colors, spacing, radii, type sizes: `theme.rs`. Read a color with `theme()`, never a literal — both palettes must stay in sync. Every text color must clear WCAG AA (4.5:1) on every surface it lands on and the three text tiers must stay a step apart; `theme::tests` measures both, in both palettes.
 - Icons: `icon.rs`. No emoji anywhere: they render differently on every OS and can't be recolored.
 - Buttons, rows, inputs, badges, modals: `widgets.rs` (`row`, `icon_button`, `primary_button`, `text_input`, `tab_button`, `menu_item`, `key_combo`, `input_modal`, `confirm_modal`). A control painted by hand needs two things egui gives its own widgets for free: `response.widget_info(…)` so it has a name in the accessibility tree, and `widgets::focus_ring` so Tab is visible.
-- Commands: the `Action` enum in `ui/app.rs`, run through `MercuryApp::run`. A new command added there shows up in the palette; add it to `SHORTCUTS` too only if it deserves a key.
-- Background work: `MercuryApp::spawn` returns an `Event`; never block the UI thread on I/O or the network.
+- Commands: the `Action` enum in `ui/app.rs`, run through `VenusApp::run`. A new command added there shows up in the palette; add it to `SHORTCUTS` too only if it deserves a key.
+- Background work: `VenusApp::spawn` returns an `Event`; never block the UI thread on I/O or the network.
 - Errors: `Result<T, String>` carrying the real cause; show them with `self.notify(msg, is_error)`.
 - Keyboard shortcuts: only the `SHORTCUTS` table in `ui/app.rs`; the help dialog and the palette render it.
 
@@ -36,7 +36,7 @@ Mercury is a native Rust + egui API client. Requests are plain JSON files in a f
 
 ## Gotchas
 - `ctx.input(|i| …)` holds a lock: collect what you need, then act outside the closure (see `handle_keys`).
-- Fonts land one frame late: `ctx.set_fonts` only applies at the next `begin_pass`, and laying out semibold text before then panics inside epaint. `theme::ensure_installed` handles this; don't draw Mercury UI on a context that hasn't been through it.
+- Fonts land one frame late: `ctx.set_fonts` only applies at the next `begin_pass`, and laying out semibold text before then panics inside epaint. `theme::ensure_installed` handles this; don't draw Venus UI on a context that hasn't been through it.
 - A clickable row registers its `ui.interact` rect *after* its contents, or the labels inside swallow the click (its background is reserved up front with `painter.add(Shape::Noop)`). The flip side: a button *inside* a row is unreachable — draw it after the row with `widgets::row_action`. Both directions are covered by `widgets::tests::a_row_action_gets_its_own_clicks`.
 - Resizable panels draw their own edge separator from `visuals.widgets.noninteractive.bg_stroke`; don't paint a second border next to it.
 - A `SidePanel` stores the rect its *contents* occupied, so a widget even one pixel wider than the space it was given makes the panel grow by that much every frame. `egui::Frame` occupies `content + inner_margin + 2 × stroke.width` — subtract `frame.total_margin().sum().x`, never just the margin. `smoke_test` asserts panel widths don't drift.
@@ -49,7 +49,7 @@ Mercury is a native Rust + egui API client. Requests are plain JSON files in a f
 - A response is only shown if `current_file` still matches what it was sent from (`sent_file`); otherwise it goes to history. Anything that changes the open request must keep that pairing honest.
 - Bare-key shortcuts must not fire while typing: check `ctx.wants_keyboard_input()`.
 - `eframe` and `egui_kittest` versions move together; dependabot ignores their minor bumps.
-- `smoke_test` sets `MERCURY_HOME` for the whole process, so keep it the only test that touches storage on disk.
+- `smoke_test` sets `VENUS_HOME` for the whole process, so keep it the only test that touches storage on disk.
 - Disabled `# Header` lines are not saved to request files (the file stores a map). This is a known limitation, not a bug.
 - A gitleaks pre-commit hook may reject credential-looking literals in tests (`-u user:pass`). Build them with `format!`.
 - Linux builds need GTK/xcb dev packages (see `.github/workflows/ci.yml`).
@@ -68,8 +68,8 @@ Done means: the new test failed before the fix and passes after; fmt, clippy and
 
 ## Distribution
 - The macOS `.app` must be a real universal binary and ad-hoc signed (`codesign --force --deep --sign -`). Unsealed, Gatekeeper calls it "damaged" rather than merely unsigned, and the user has no way through. `release.yml` verifies both and fails the release otherwise.
-- Mercury is unsigned by Apple/Microsoft on purpose (no paid certificates). Install docs must tell people what their OS will say and how to get past it.
-- App data lives in `~/.mercury`. The Homebrew cask's `zap` list must match it.
+- Venus is unsigned by Apple/Microsoft on purpose (no paid certificates). Install docs must tell people what their OS will say and how to get past it.
+- App data lives in `~/.venus`. The Homebrew cask's `zap` list must match it.
 
 ## Releasing (only when asked)
-Bump `version` in `Cargo.toml`, move the CHANGELOG `[Unreleased]` notes under the new version, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`. cargo-dist (`release.yml`) builds and publishes the installers. The Homebrew cask is updated by hand: copy the SHA256 that the release job prints into `Harry-kp/homebrew-tap/Casks/mercury.rb`.
+Bump `version` in `Cargo.toml`, move the CHANGELOG `[Unreleased]` notes under the new version, and run checks before tagging a release. cargo-dist (`release.yml`) targets Venus's repository and bundle names. Do not update Mercury's upstream Homebrew cask. Publishing is a separate action and requires the user's instruction.

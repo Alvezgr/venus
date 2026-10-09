@@ -1,6 +1,6 @@
 /**
  * Landing Page Styles
- * Matching the original Mercury landing page design
+ * Matching the original Venus landing page design
  */
 
 /* Hero Section */
@@ -371,7 +371,7 @@
   text-align: left;
 }
 
-.mercuryCol {
+.venusCol {
   background: rgba(0, 255, 136, 0.1);
   color: #00ff88 !important;
 }
@@ -713,7 +713,7 @@
   color: #111827;
 }
 
-:global([data-theme='light']) .mercuryCol {
+:global([data-theme='light']) .venusCol {
   background: rgba(5, 150, 105, 0.1);
   color: #059669 !important;
 }

@@ -28,7 +28,7 @@ Each request is one `.json` file in the workspace that holds a single JSON objec
 | `url` | string | Yes | The full URL, including `http://` or `https://`. May contain `{{variables}}`. |
 | `headers` | object | No | Header name → value, both strings. Missing means no headers. |
 | `body` | string | No | The raw request body. Missing means no body. |
-| `insomnia_id` | string | No | Stable Insomnia request ID in a cloud-backed workspace. Preserve it when editing; duplicating a request in Mercury clears it so the copy gets a new ID on push. |
+| `insomnia_id` | string | No | Stable Insomnia request ID in a cloud-backed workspace. Preserve it when editing; duplicating a request in Venus clears it so the copy gets a new ID on push. |
 
 The smallest valid file:
 
@@ -38,7 +38,7 @@ The smallest valid file:
 
 If a file can't be parsed as a request, it still appears in the sidebar, without a method, and opening it shows an error.
 
-## How Mercury writes files
+## How Venus writes files
 
 - The JSON is pretty-printed with 2-space indentation.
 - **Headers are sorted by name**, so saving the same request always produces the same file and Git diffs stay small.
@@ -61,7 +61,7 @@ The body is always a string, whatever its content type. A JSON body is stored as
 }
 ```
 
-Mercury doesn't add a `Content-Type` header, so include one yourself.
+Venus doesn't add a `Content-Type` header, so include one yourself.
 
 ## Variables
 
@@ -69,11 +69,11 @@ Mercury doesn't add a `Content-Type` header, so include one yourself.
 
 ## Editing by hand
 
-You can create or edit request files in any editor. Mercury watches the workspace and reloads the open request when its file changes, unless you have unsaved edits in Mercury.
+You can create or edit request files in any editor. Venus watches the workspace and reloads the open request when its file changes, unless you have unsaved edits in Venus.
 
-## Other files Mercury uses
+## Other files Venus uses
 
-These live outside the workspace, in `~/.mercury/` (or `$MERCURY_HOME`):
+These live outside the workspace, in `~/.venus/` (or `$VENUS_HOME`):
 
 | File | Contents |
 |------|----------|

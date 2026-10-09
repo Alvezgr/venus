@@ -4,11 +4,12 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.3.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Mercury, please report it by emailing **harrykumar.kp@gmail.com**.
+If you discover a security vulnerability in Venus, please use [GitHub private vulnerability reporting](https://github.com/alvezgr/venus/security/advisories/new).
+Do not include credentials in public issues.
 
 Please include:
 - Description of the vulnerability
@@ -16,12 +17,12 @@ Please include:
 - Potential impact
 - Any suggested fixes (if applicable)
 
-We will respond within 48 hours and work with you to understand and address the issue.
+Include the affected Venus version and whether the issue involves Insomnia Cloud Sync.
 
 ## Security Best Practices
 
-Mercury is designed with security in mind:
+Venus is designed with security in mind:
 - No telemetry or data collection
-- No network requests except those you explicitly make
-- Local-only data storage
+- API requests and explicitly requested Insomnia authentication and cloud sync
+- Local workspace and session storage; chosen changes are uploaded to Insomnia Cloud when you push
 - No automatic updates without user consent

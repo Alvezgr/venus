@@ -1,5 +1,5 @@
 //! Import Postman (v2.1 JSON) and Insomnia (JSON/YAML) exports into a
-//! workspace folder as Mercury request files + `.env.<name>` files.
+//! workspace folder as Venus request files + `.env.<name>` files.
 
 use crate::kv::{self, url_encode, KeyValue};
 use crate::model::{HttpMethod, RequestFile};
@@ -15,7 +15,7 @@ use std::path::Path;
 pub struct ImportCount {
     pub requests: usize,
     pub envs: usize,
-    /// One line per request whose auth or body Mercury cannot express.
+    /// One line per request whose auth or body Venus cannot express.
     pub skipped: Vec<String>,
 }
 
@@ -226,9 +226,9 @@ struct PostmanBody {
     urlencoded: Vec<PostmanKeyValue>,
 }
 
-/// A Postman body in Mercury's terms, plus the `Content-Type` it implies when
+/// A Postman body in Venus's terms, plus the `Content-Type` it implies when
 /// the request did not set one. The modes that come back `None` are the ones
-/// Mercury has nowhere to put — `formdata` and `file` need an attached file a
+/// Venus has nowhere to put — `formdata` and `file` need an attached file a
 /// request file cannot reference — so the import can say what it could not
 /// bring across, instead of writing an empty body under a `Content-Type` that
 /// promises one.
@@ -276,7 +276,7 @@ impl PostmanAuth {
 }
 
 /// Postman's auth as a header, or as a query parameter for an API key that
-/// goes in the URL. `None` means Mercury cannot express it — OAuth 2, AWS
+/// goes in the URL. `None` means Venus cannot express it — OAuth 2, AWS
 /// signatures, NTLM and the rest need a token exchange a request file cannot
 /// describe, so the import reports them rather than dropping them quietly.
 fn postman_auth(auth: &PostmanAuth) -> Option<Auth> {
@@ -656,7 +656,7 @@ mod tests {
         let count = result.expect("a valueless query param must not fail the import");
         assert_eq!(count.requests, 3);
 
-        // a urlencoded body becomes Mercury's Form body, with the header that
+        // a urlencoded body becomes Venus's Form body, with the header that
         // makes the body type picker agree
         let login = RequestFile::from_json(&read_out(&dir, "login.json")).unwrap();
         assert_eq!(login.body, "grant_type=password&scope=");
@@ -680,7 +680,7 @@ mod tests {
         assert!(!list.headers.contains_key("Authorization"));
         assert!(list.url.ends_with("?page=1&archived="), "got {}", list.url);
 
-        // what Mercury cannot express is reported, not dropped in silence
+        // what Venus cannot express is reported, not dropped in silence
         assert_eq!(
             count.skipped,
             vec![

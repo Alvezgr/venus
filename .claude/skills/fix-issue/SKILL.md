@@ -1,6 +1,6 @@
 ---
 name: fix-issue
-description: Fix a Mercury GitHub issue end to end - reproduce with a failing test, fix the root cause, run checks, sync docs, open a PR, wait for green CI, squash-merge. Use when given an issue number or URL to fix.
+description: Fix a Venus GitHub issue end to end - reproduce with a failing test, fix the root cause, run checks, sync docs, open a PR, wait for green CI, squash-merge. Use when given an issue number or URL to fix.
 argument-hint: <issue number or URL>
 ---
 
@@ -29,7 +29,7 @@ Make the smallest change that fixes the root cause. Reuse existing helpers (CLAU
 ```
 cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test
 ```
-All three must pass. For visible UI changes, also run `MERCURY_HOME=$(mktemp -d) cargo run` and look. If you screenshot, capture only the Mercury window (`screencapture -l <windowid>`), never the full screen.
+All three must pass. For visible UI changes, also run `VENUS_HOME=$(mktemp -d) cargo run` and look. If you screenshot, capture only the Venus window (`screencapture -l <windowid>`), never the full screen.
 
 ## 5. Docs
 Apply the "Keep docs in sync" table in CLAUDE.md. Add a line under `CHANGELOG.md` → `[Unreleased]` (Fixed / Added / Changed).

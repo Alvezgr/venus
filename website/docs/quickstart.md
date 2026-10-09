@@ -6,7 +6,7 @@ sidebar_position: 2
 
 # Quick Start
 
-This page walks through sending, saving and organizing requests. It assumes Mercury is [installed](/docs/getting-started).
+This page walks through sending, saving and organizing requests. It assumes Venus is [installed](/docs/getting-started).
 
 ## The layout
 
@@ -30,23 +30,23 @@ The response panel shows the status, response time and size, followed by the bod
 Requests you send without saving appear under **Recent** in the sidebar. Click one to load it again.
 
 :::tip
-You can paste a cURL command into the URL bar. Mercury fills in the method, URL, headers and body from it. See [Import & Export](/docs/features/import-export#import-from-curl).
+You can paste a cURL command into the URL bar. Venus fills in the method, URL, headers and body from it. See [Import & Export](/docs/features/import-export#import-from-curl).
 :::
 
 On Windows and Linux, `⌘` means `Ctrl`.
 
 ## 2. Open a workspace
 
-A workspace is any folder. Mercury shows its subfolders and `.json` request files in the sidebar.
+A workspace is any folder. Venus shows its subfolders and `.json` request files in the sidebar.
 
 1. Press `⌘ O`, or choose **Open folder…** from the workspace menu in the top bar.
 2. Pick or create a folder.
 
-Mercury watches the folder, so files you add or edit in another editor show up in the sidebar.
+Venus watches the folder, so files you add or edit in another editor show up in the sidebar.
 
 ## 3. Save the request
 
-Press `⌘ S`. Mercury asks for a name and writes `<name>.json` to the workspace root:
+Press `⌘ S`. Venus asks for a name and writes `<name>.json` to the workspace root:
 
 ```json
 {
@@ -55,7 +55,7 @@ Press `⌘ S`. Mercury asks for a name and writes `<name>.json` to the workspace
 }
 ```
 
-After that, Mercury saves changes to the open file automatically. See [Saving](/docs/features/requests#saving).
+After that, Venus saves changes to the open file automatically. See [Saving](/docs/features/requests#saving).
 
 To save into a particular folder, right-click the folder in the sidebar and choose **New Request**. This saves the current editor contents into that folder under the name you give it.
 
@@ -97,11 +97,11 @@ Right-click a folder for **New Request**, **New Folder**, **Rename**, **Delete**
 
 ## Picking up where you left off
 
-Mercury reopens the workspace, the environment and the request file you had open. Unsaved edits are written to that file before it quits, so a relaunch puts you back where you were.
+Venus reopens the workspace, the environment and the request file you had open. Unsaved edits are written to that file before it quits, so a relaunch puts you back where you were.
 
 ## Light and dark
 
-Mercury follows your system appearance. `⌘ D`, or the sun/moon button in the top bar, pins it to light or dark instead; the choice is remembered between launches.
+Venus follows your system appearance. `⌘ D`, or the sun/moon button in the top bar, pins it to light or dark instead; the choice is remembered between launches.
 
 ## Next
 

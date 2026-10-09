@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: File a bug report to help us improve Mercury
+description: File a bug report to help us improve Venus
 title: "[Bug]: "
 labels: ["bug", "status: todo"]
 body:
@@ -11,10 +11,10 @@ body:
         Please provide as much detail as possible to help us reproduce and fix the issue.
 
   - type: input
-    id: mercury-version
+    id: venus-version
     attributes:
-      label: Mercury Version
-      description: The release you installed (see the Releases page or `brew info mercury`)
+      label: Venus Version
+      description: The release you installed (see the Releases page or the Cargo.toml version for a local build)
       placeholder: "0.1.0-beta"
     validations:
       required: true
@@ -37,7 +37,7 @@ body:
     attributes:
       label: What happened?
       description: Describe the bug clearly
-      placeholder: "When I click File → Import → Postman, Mercury crashes with error..."
+      placeholder: "When I click File → Import → Postman, Venus crashes with error..."
     validations:
       required: true
 
@@ -56,7 +56,7 @@ body:
       label: Steps to Reproduce
       description: Detailed steps to reproduce the issue
       placeholder: |
-        1. Open Mercury
+        1. Open Venus
         2. Click File → Import → Postman
         3. Select collection.json file
         4. App crashes
@@ -86,7 +86,7 @@ body:
       options:
         - label: I have searched existing issues to avoid duplicates
           required: true
-        - label: This is a bug in Mercury (not a feature request)
+        - label: This is a bug in Venus (not a feature request)
           required: true
         - label: I agree to follow the [Code of Conduct](../CODE_OF_CONDUCT.md)
           required: true

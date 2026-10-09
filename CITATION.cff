@@ -1,10 +1,11 @@
 cff-version: 1.2.0
-message: "If you use Mercury, please cite it as below."
+message: "Please credit Venus and its Mercury upstream."
 authors:
+- name: "Alvezgr"
+  url: "https://github.com/alvezgr"
 - family-names: "KP"
   given-names: "Harry"
   url: "https://github.com/Harry-kp"
-title: "Mercury: API Testing for Purists"
-version: 0.2.0
-date-released: 2025-12-20
-url: "https://github.com/Harry-kp/mercury"
+title: "Venus: a native API client for Insomnia users"
+version: 0.3.1
+url: "https://github.com/alvezgr/venus"

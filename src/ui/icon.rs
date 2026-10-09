@@ -1,6 +1,6 @@
 //! Vector icons drawn with the egui painter.
 //!
-//! Mercury ships no icon font and no emoji: every glyph here is a handful of
+//! Venus ships no icon font and no emoji: every glyph here is a handful of
 //! points on a 24x24 grid, scaled into whatever rect it is asked to fill. That
 //! keeps icons crisp at any size, correctly colored in both palettes, and
 //! identical on every platform (emoji are not).

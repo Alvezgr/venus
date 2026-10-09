@@ -4,7 +4,7 @@
 //! Commands come from [`Action`], so a new action shows up here for free; the
 //! key hint next to it is read from the `SHORTCUTS` table.
 
-use super::app::{Action, MercuryApp, SHORTCUTS};
+use super::app::{Action, VenusApp, SHORTCUTS};
 use super::icon::Icon;
 use super::theme::{theme, Layout, Radius, Space};
 use super::widgets::{self, faint, label, method_text, muted};
@@ -170,7 +170,7 @@ fn score(haystack: &str, needle: &str) -> Option<i32> {
         .then_some(100 - haystack.len() as i32)
 }
 
-impl MercuryApp {
+impl VenusApp {
     pub fn open_palette(&mut self) {
         let items = self
             .workspace

@@ -30,13 +30,13 @@ The body type sits at the right of the tab row and writes the `Content-Type` hea
 | **Text** | `text/plain` | Plain |
 | **No type** | none | Plain |
 
-If you type a body and leave the type as **No type**, Mercury says so under the editor — most APIs reject a body without a `Content-Type`, and the error they send back rarely says that.
+If you type a body and leave the type as **No type**, Venus says so under the editor — most APIs reject a body without a `Content-Type`, and the error they send back rarely says that.
 
-The header stays the source of truth, so editing `Content-Type` by hand in the Headers tab changes the body type too. A content type Mercury doesn't recognise (`application/xml`, say) shows the plain editor and is left alone unless you pick a different type. The Params and Headers tabs show how many entries are enabled as a small count next to the name. The Auth tab is labeled with the current auth type.
+The header stays the source of truth, so editing `Content-Type` by hand in the Headers tab changes the body type too. A content type Venus doesn't recognise (`application/xml`, say) shows the plain editor and is left alone unless you pick a different type. The Params and Headers tabs show how many entries are enabled as a small count next to the name. The Auth tab is labeled with the current auth type.
 
 ### Body
 
-A plain text editor with JSON highlighting. The format button at the top right pretty-prints the body if it's valid JSON. Mercury doesn't set `Content-Type` for you, so add it on the Headers tab.
+A plain text editor with JSON highlighting. The format button at the top right pretty-prints the body if it's valid JSON. Venus doesn't set `Content-Type` for you, so add it on the Headers tab.
 
 ### Params
 
@@ -74,14 +74,14 @@ The Auth tab edits the `Authorization` header. See [Authentication](/docs/featur
 
 ## Saving
 
-- `⌘ S` saves the open request. If the request isn't saved yet, Mercury asks for a name and creates `<name>.json` in the selected collection, or in the workspace root if you haven't clicked one. If no workspace is open, it asks you to open a folder first.
+- `⌘ S` saves the open request. If the request isn't saved yet, Venus asks for a name and creates `<name>.json` in the selected collection, or in the workspace root if you haven't clicked one. If no workspace is open, it asks you to open a folder first.
 - Right-click a folder and choose **New Request** to save the current editor contents into that folder.
-- Once a request has a file, Mercury saves it automatically every 5 seconds while there are unsaved changes, when you switch to another request, and when you quit. A dot after the name in the breadcrumb means there are unsaved changes.
+- Once a request has a file, Venus saves it automatically every 5 seconds while there are unsaved changes, when you switch to another request, and when you quit. A dot after the name in the breadcrumb means there are unsaved changes.
 - `⌘ N` starts a new, empty, unsaved request.
 
 If a response arrives after you have opened a different request, it is recorded in [history](/docs/features/history) rather than shown under the request you are now looking at.
 
-If a request file changes on disk (for example in another editor) and you have no unsaved edits, Mercury reloads it. If you have unsaved edits, yours are kept (with a warning) and saved over the file. If the file is deleted, Mercury clears the editor.
+If a request file changes on disk (for example in another editor) and you have no unsaved edits, Venus reloads it. If you have unsaved edits, yours are kept (with a warning) and saved over the file. If the file is deleted, Venus clears the editor.
 
 ## The response panel
 
@@ -108,7 +108,7 @@ How the body is displayed depends on its type:
 | Text over 148 KB | Content type and size, with **Save** |
 | `Content-Length` over 10 MB | **Response Too Large** (not downloaded) |
 
-If the server doesn't send a `Content-Type`, Mercury guesses the type from the body. Text bodies have a copy button. See [Performance](/docs/performance) for why the size limits exist.
+If the server doesn't send a `Content-Type`, Venus guesses the type from the body. Text bodies have a copy button. See [Performance](/docs/performance) for why the size limits exist.
 
 If a request fails, the panel shows the reason: timed out, SSL/TLS error, connection failed, or invalid URL.
 
@@ -124,10 +124,10 @@ These values are fixed in the app and can't be changed:
 
 ## Cookies
 
-Mercury uses one HTTP client for the whole session, and that client has a cookie store:
+Venus uses one HTTP client for the whole session, and that client has a cookie store:
 
-- When a response sets a cookie, Mercury stores it and sends it on later requests to the same site. A login followed by an authenticated request works without copying cookies by hand.
-- Cookies live only in memory. Quitting Mercury clears them, and there's no other way to clear them.
+- When a response sets a cookie, Venus stores it and sends it on later requests to the same site. A login followed by an authenticated request works without copying cookies by hand.
+- Cookies live only in memory. Quitting Venus clears them, and there's no other way to clear them.
 - To send a particular cookie yourself, add a `Cookie` header.
 
 ## Sidebar actions

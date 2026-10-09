@@ -1,6 +1,6 @@
 //! Right panel: the response viewer, or the history list (⌘H).
 
-use super::app::{MercuryApp, ResponseTab};
+use super::app::{ResponseTab, VenusApp};
 use super::icon::{self, Icon};
 use super::theme::{mono, theme, Layout, Space, Text};
 use super::widgets::{
@@ -12,7 +12,7 @@ use crate::http::{self, ResponseType, MAX_INLINE_SIZE, MAX_RESPONSE_SIZE};
 use crate::storage;
 use eframe::egui::{self, Align, Margin, ScrollArea, Ui, Vec2};
 
-impl MercuryApp {
+impl VenusApp {
     pub fn response_panel(&mut self, ctx: &egui::Context) {
         let t = theme();
         let window = ctx.content_rect().width();
@@ -314,7 +314,7 @@ impl MercuryApp {
                     Icon::Alert,
                     Some(t.warning),
                     "Response too large",
-                    &[&size, "Not downloaded, to keep Mercury responsive"],
+                    &[&size, "Not downloaded, to keep Venus responsive"],
                 );
             }
             ResponseType::LargeText => {
@@ -449,7 +449,7 @@ fn content_kind(content_type: &str) -> (Icon, &'static str) {
     }
 }
 
-/// The placeholders for bodies Mercury will not render inline offer the one
+/// The placeholders for bodies Venus will not render inline offer the one
 /// action that makes them useful, instead of naming a toolbar icon.
 fn save_button(ui: &mut Ui, save: &mut bool) {
     ui.add_space(Space::XL);

@@ -6,13 +6,13 @@ sidebar_position: 6
 
 # Import & Export
 
-Mercury imports Postman and Insomnia exports and cURL commands, and it can copy any request as a cURL command.
+Venus imports Postman and Insomnia exports and cURL commands, and it can copy any request as a cURL command.
 
 ## Local Insomnia Cloud bridge (Linux)
 
 Choose **Sync → Browse cloud collections…** to sign in through your browser.
 Complete authentication on Insomnia's website and paste its authentication code
-into Mercury. You can also use an existing installed Insomnia login. Search
+into Venus. You can also use an existing installed Insomnia login. Search
 collections by name or organization, select one, and choose an empty folder to
 download master. No collection export or project ID is needed for this flow.
 
@@ -21,29 +21,29 @@ the bottom bar. Choose **Pull from master** to download updates or **Push to
 master** to review saved request and environment changes. Write a commit message
 in the dialog, then confirm the push. The first line is the cloud commit title
 and remaining lines are its description. All saved changes are included; changes
-after the preview require a fresh review. Mercury saves the open request, pauses editing
+after the preview require a fresh review. Venus saves the open request, pauses editing
 during sync, and refreshes the workspace afterward. Errors remain in the sync
 menu. Pull refuses unpushed edits; push checks cloud conflicts.
 
-This local fork includes a Rust bridge using Mercury's saved sign-in or the
+This local fork includes a Rust bridge using Venus's saved sign-in or the
 installed Insomnia login. All
 cloud reads and pushes target **master**, regardless of Insomnia's active branch.
 The bridge syncs requests, their folder locations and cloud environments.
 Managed `.env.insomnia-<name>-<id>.json` files preserve JSON types; sub-environments
 inherit base variables. Edit these files and push to share environment changes.
-Ordinary local `.env` files are never uploaded. Close Mercury while using the
+Ordinary local `.env` files are never uploaded. Close Venus while using the
 terminal commands below, then reopen
 its workspace. Sync from the bottom bar handles the refresh automatically.
 
 ```bash
-mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
-mercury --insomnia-collections
-mercury --insomnia-plan <cloud-project-id> <workspace-folder>
-mercury --insomnia-push <cloud-project-id> <workspace-folder>
+venus --insomnia-fetch <cloud-project-id> <workspace-folder>
+venus --insomnia-collections
+venus --insomnia-plan <cloud-project-id> <workspace-folder>
+venus --insomnia-push <cloud-project-id> <workspace-folder>
 ```
 
 Fetch initially requires an empty folder. After fetching, open that folder in
-Mercury and edit requests normally. Plan previews creations, updates and
+Venus and edit requests normally. Plan previews creations, updates and
 deletions without uploading them. Push commits saved changes to master; teammates
 select master and pull in Insomnia. `--insomnia-status <cloud-project-id>` checks
 connectivity and shows master's commit and request counts.
@@ -55,7 +55,7 @@ push is interrupted, repeat push to reconcile the saved pending commit. Preserve
 
 Configure local `.env` files separately; they are retained by fetch and never
 uploaded. Digest auth, scripts, multipart/file bodies and Insomnia template tags
-remain in cloud documents but are not executed by Mercury. Each fetch reports
+remain in cloud documents but are not executed by Venus. Each fetch reports
 these limits in `.insomnia-sync/warnings.txt`; unsupported body/header edits are
 rejected to prevent losing configuration.
 
@@ -69,7 +69,7 @@ supports the legacy `resources` format, not Insomnia v5 collections.
 Choose **Import from Postman…** or **Import from Insomnia…** from the workspace menu in the top bar. The empty sidebar also has **Import from ...** links. Pick the export file, and then:
 
 - if a workspace is open, the requests are written **into that workspace**
-- if no workspace is open, Mercury asks for a folder to write to, then opens it as the workspace
+- if no workspace is open, Venus asks for a folder to write to, then opens it as the workspace
 
 A notification reports how many requests and environments were imported.
 
@@ -79,7 +79,7 @@ File and folder names are sanitized: they're lowercased, and spaces and characte
 
 Export the collection from Postman as **Collection v2.1** (JSON).
 
-| Postman | Mercury |
+| Postman | Venus |
 |---------|---------|
 | Request | `<name>.json` |
 | Folder (any depth) | Folder, with the same nesting |
@@ -94,7 +94,7 @@ Auth set on the collection or a folder applies to every request under it, and a 
 
 Postman `{{variables}}` stay as they are in URLs, headers and bodies, so they work with the generated `.env` file. Scripts and tests aren't imported.
 
-What Mercury can't express is **named in the notification** rather than dropped quietly: OAuth 2 and other token-exchange auth, `form-data` and binary bodies, which need a file a request file cannot point at, and GraphQL bodies. Anything listed there needs finishing by hand on the [Auth tab](/docs/features/auth) or the Body tab.
+What Venus can't express is **named in the notification** rather than dropped quietly: OAuth 2 and other token-exchange auth, `form-data` and binary bodies, which need a file a request file cannot point at, and GraphQL bodies. Anything listed there needs finishing by hand on the [Auth tab](/docs/features/auth) or the Body tab.
 
 Example: importing a collection named "My API":
 
@@ -113,7 +113,7 @@ workspace/
 
 Export from Insomnia as JSON or YAML.
 
-| Insomnia | Mercury |
+| Insomnia | Venus |
 |----------|---------|
 | Request inside a request group | `<group-name>/<name>.json` |
 | Request not in a group | `imported/<name>.json` |
@@ -135,7 +135,7 @@ workspace/
 
 ## Import from cURL
 
-Paste a command that starts with `curl ` into the **URL bar**. Mercury parses it and replaces the method, URL, headers and body. This works with commands copied from browser DevTools or API docs, including multi-line commands that use `\` continuations.
+Paste a command that starts with `curl ` into the **URL bar**. Venus parses it and replaces the method, URL, headers and body. This works with commands copied from browser DevTools or API docs, including multi-line commands that use `\` continuations.
 
 ```bash
 curl -X POST https://api.example.com/users \

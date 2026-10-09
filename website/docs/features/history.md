@@ -31,7 +31,7 @@ Bodies of images and binary responses aren't stored in history. A restored binar
 
 | | |
 |---|---|
-| File | `~/.mercury/history.json` (one list for all workspaces) |
+| File | `~/.venus/history.json` (one list for all workspaces) |
 | Entries kept | The newest 50 |
 | Age | Entries older than 7 days are dropped |
 | Clearing | The trash icon in the history header deletes the file immediately, with no confirmation |
@@ -40,7 +40,7 @@ History stores full request headers and response bodies, including any tokens th
 
 History is read from disk only when you first open the list or send a request, and only a summary of each entry is kept in memory. See [Performance](/docs/performance#lazy-loading).
 
-To keep Mercury's data somewhere other than `~/.mercury/`, set the `MERCURY_HOME` environment variable before launching. See the [FAQ](/docs/faq#where-is-my-data-stored).
+To keep Venus's data somewhere other than `~/.venus/`, set the `VENUS_HOME` environment variable before launching. See the [FAQ](/docs/faq#where-is-my-data-stored).
 
 ## Related
 

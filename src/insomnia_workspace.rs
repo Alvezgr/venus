@@ -49,6 +49,7 @@ impl SyncLock {
             .file_name()
             .and_then(|name| name.to_str())
             .ok_or_else(|| "Invalid workspace name".to_string())?;
+        // Keep the lock name shared with older Mercury builds using the same workspace.
         let path = parent.join(format!(".{name}.mercury-sync.lock"));
         let file = fs::OpenOptions::new()
             .create(true)
@@ -100,7 +101,7 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
         .parent()
         .ok_or_else(|| "Invalid workspace path".to_string())?;
     fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    let temporary = parent.join(new_id(".mercury-write")?);
+    let temporary = parent.join(new_id(".venus-write")?);
     let mut options = fs::OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -331,7 +332,7 @@ fn resource_path(
     Ok(path)
 }
 
-pub fn mercury_templates(text: &str) -> String {
+pub fn venus_templates(text: &str) -> String {
     let mappings = vars::extract(text)
         .into_iter()
         .filter_map(|variable| {
@@ -399,12 +400,12 @@ pub fn project_request(
         if headers
             .insert(
                 key.into(),
-                mercury_templates(crypto::string(header, "value")?),
+                venus_templates(crypto::string(header, "value")?),
             )
             .is_some()
         {
             warnings.push(format!(
-                "{id}: duplicate headers cannot be represented in Mercury"
+                "{id}: duplicate headers cannot be represented in Venus"
             ));
         }
     }
@@ -418,11 +419,11 @@ pub fn project_request(
                     .filter(|prefix| !prefix.is_empty())
                     .unwrap_or("Bearer"),
                 " ",
-                mercury_templates(authentication["token"].as_str().unwrap_or(""))
+                venus_templates(authentication["token"].as_str().unwrap_or(""))
             )),
             "basic" => {
-                let username = mercury_templates(authentication["username"].as_str().unwrap_or(""));
-                let password = mercury_templates(authentication["password"].as_str().unwrap_or(""));
+                let username = venus_templates(authentication["username"].as_str().unwrap_or(""));
+                let password = venus_templates(authentication["password"].as_str().unwrap_or(""));
                 if username.contains("{{") || password.contains("{{") {
                     warnings.push(format!("{id}: Basic auth contains templates; configure the Authorization header locally"));
                     None
@@ -433,7 +434,7 @@ pub fn project_request(
             "" => None,
             kind => {
                 warnings.push(format!(
-                    "{id}: {kind} auth is preserved but not executed by Mercury"
+                    "{id}: {kind} auth is preserved but not executed by Venus"
                 ));
                 None
             }
@@ -443,22 +444,22 @@ pub fn project_request(
             headers.insert("Authorization".into(), value);
         }
     }
-    let mut url = mercury_templates(crypto::string(document, "url")?);
+    let mut url = venus_templates(crypto::string(document, "url")?);
     for parameter in document["parameters"].as_array().into_iter().flatten() {
         if parameter["disabled"] == true {
             continue;
         }
         let mut parameters = kv::parse_query_params(&url);
         parameters.push(kv::KeyValue::new(
-            mercury_templates(crypto::string(parameter, "name")?),
-            mercury_templates(crypto::string(parameter, "value")?),
+            venus_templates(crypto::string(parameter, "name")?),
+            venus_templates(crypto::string(parameter, "value")?),
         ));
         url = kv::build_url(&url, &parameters);
     }
     let body = &document["body"];
     let mut body_text = body["text"]
         .as_str()
-        .map(mercury_templates)
+        .map(venus_templates)
         .unwrap_or_default();
     let mime = body["mimeType"].as_str().unwrap_or("");
     if mime == "application/x-www-form-urlencoded" {
@@ -469,15 +470,15 @@ pub fn project_request(
             .filter(|parameter| parameter["disabled"] != true)
             .map(|parameter| {
                 kv::KeyValue::new(
-                    mercury_templates(parameter["name"].as_str().unwrap_or("")),
-                    mercury_templates(parameter["value"].as_str().unwrap_or("")),
+                    venus_templates(parameter["name"].as_str().unwrap_or("")),
+                    venus_templates(parameter["value"].as_str().unwrap_or("")),
                 )
             })
             .collect();
         body_text = kv::build_form(&parameters);
     } else if body.get("params").is_some() || body.get("fileName").is_some() {
         warnings.push(format!(
-            "{id}: multipart/file body is preserved but not executed by Mercury"
+            "{id}: multipart/file body is preserved but not executed by Venus"
         ));
     }
     if !mime.is_empty()
@@ -503,12 +504,12 @@ pub fn project_request(
         })
     {
         warnings.push(format!(
-            "{id}: Insomnia scripts are preserved but not executed by Mercury"
+            "{id}: Insomnia scripts are preserved but not executed by Venus"
         ));
     }
     if document.to_string().contains("{%") {
         warnings.push(format!(
-            "{id}: Insomnia template tags are preserved but not executed by Mercury"
+            "{id}: Insomnia template tags are preserved but not executed by Venus"
         ));
     }
     if document["pathParameters"]
@@ -516,7 +517,7 @@ pub fn project_request(
         .is_some_and(|parameters| !parameters.is_empty())
     {
         warnings.push(format!(
-            "{id}: Insomnia path parameters are preserved but not executed by Mercury"
+            "{id}: Insomnia path parameters are preserved but not executed by Venus"
         ));
     }
     Ok(RequestFile {
@@ -603,7 +604,7 @@ pub fn edit_document(
     }
     if before.url != after.url {
         edited["url"] = json!(cloud_templates(&after.url));
-        // Enabled query parameters are already projected into Mercury's URL.
+        // Enabled query parameters are already projected into Venus's URL.
         edited["parameters"] = json!(document["parameters"]
             .as_array()
             .into_iter()
@@ -621,7 +622,7 @@ pub fn edit_document(
             .filter(|header| header["disabled"] != true)
         {
             if !names.insert(crypto::string(header, "name")?.to_lowercase()) {
-                return Err("Edit duplicate request headers in Insomnia; Mercury's header map cannot preserve them".into());
+                return Err("Edit duplicate request headers in Insomnia; Venus's header map cannot preserve them".into());
             }
         }
         let before_auth = kv::auth_value(&kv::map_to_headers(&before.headers)).map(str::to_string);
@@ -674,7 +675,7 @@ pub fn edit_document(
         let mime = document["body"]["mimeType"].as_str().unwrap_or("");
         if document["body"].get("fileName").is_some() || mime == "multipart/form-data" {
             return Err(
-                "Mercury cannot edit multipart/file bodies; edit that body in Insomnia".into(),
+                "Venus cannot edit multipart/file bodies; edit that body in Insomnia".into(),
             );
         }
         if !edited["body"].is_object() {
@@ -843,7 +844,7 @@ pub fn environment_vars(
         for (key, value) in data {
             values.insert(
                 key.clone(),
-                mercury_templates(
+                venus_templates(
                     &value
                         .as_str()
                         .map(str::to_string)
@@ -1440,7 +1441,7 @@ mod tests {
     #[test]
     fn whitespace_templates_and_unrepresentable_bodies_are_safe() {
         assert_eq!(
-            mercury_templates("{{  _.host  }}/{{_.id}}"),
+            venus_templates("{{  _.host  }}/{{_.id}}"),
             "{{host}}/{{id}}"
         );
         assert_eq!(

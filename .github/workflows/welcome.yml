@@ -17,13 +17,12 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           issue-message: |
-            👋 **Welcome to Mercury!** Thanks for opening your first issue.
+            👋 **Welcome to Venus!** Thanks for opening your first issue.
             
             A maintainer will respond soon. In the meantime:
-            - 📖 Check our [Contributing Guide](https://github.com/Harry-kp/mercury/blob/master/CONTRIBUTING.md)
-            - 💬 Join [Discussions](https://github.com/Harry-kp/mercury/discussions) for Q&A
-            - 🎯 See our [Q1 2026 Roadmap](https://github.com/Harry-kp/mercury/blob/master/Q1_2026_ROADMAP.md)
-            - 🐛 Browse [good first issues](https://github.com/Harry-kp/mercury/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+            - 📖 Check our [Contributing Guide](https://github.com/alvezgr/venus/blob/master/CONTRIBUTING.md)
+            - 💬 Join [Discussions](https://github.com/alvezgr/venus/discussions) for Q&A
+            - 🐛 Browse [good first issues](https://github.com/alvezgr/venus/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
             
             We're excited to have you here! 🚀
             
@@ -37,4 +36,4 @@ jobs:
             - [ ] PR description links to an issue (e.g., "Fixes #123")
             - [ ] All acceptance criteria from the linked issue are met
             
-            A maintainer will review within 48 hours. Thanks for contributing to Mercury! 💜
+            Thanks for contributing to Venus! 💜

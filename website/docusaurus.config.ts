@@ -3,8 +3,8 @@ import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Mercury',
-  tagline: 'The last API client you\'ll ever need',
+  title: 'Venus',
+  tagline: 'Your Insomnia collections, in a native Rust app',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -28,11 +28,11 @@ const config: Config = {
   ],
 
   // GitHub Pages deployment
-  url: 'https://harry-kp.github.io',
-  baseUrl: '/mercury/',
+  url: 'https://alvezgr.github.io',
+  baseUrl: '/venus/',
 
-  organizationName: 'Harry-kp',
-  projectName: 'mercury',
+  organizationName: 'alvezgr',
+  projectName: 'venus',
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
@@ -48,7 +48,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/Harry-kp/mercury/tree/main/website/',
+          editUrl: 'https://github.com/alvezgr/venus/tree/master/website/',
         },
         blog: false, // Disable blog
         theme: {
@@ -59,17 +59,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/mercury-social-card.png',
-
-    // Announcement Bar
-    announcementBar: {
-      id: 'release_0_2_0',
-      content:
-        '🚀 Mercury v0.2.0 is out! <a target="_blank" rel="noopener noreferrer" href="https://github.com/Harry-kp/mercury/releases/tag/v0.2.0">Download Now</a>',
-      backgroundColor: 'var(--announcement-bg)',
-      textColor: 'var(--announcement-text)',
-      isCloseable: true,
-    },
+    image: 'img/logo.png',
 
     // Image Zoom Configuration
     zoom: {
@@ -88,9 +78,9 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Mercury',
+      title: 'Venus',
       logo: {
-        alt: 'Mercury Logo',
+        alt: 'Venus Logo',
         src: 'img/logo.png',
       },
       items: [
@@ -106,12 +96,12 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/Harry-kp/mercury/releases',
-          label: 'Download',
+          to: '/docs/getting-started',
+          label: 'Build & install',
           position: 'right',
         },
         {
-          href: 'https://github.com/Harry-kp/mercury',
+          href: 'https://github.com/alvezgr/venus',
           label: 'GitHub',
           position: 'right',
         },
@@ -159,20 +149,20 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/Harry-kp/mercury',
+              href: 'https://github.com/alvezgr/venus',
             },
             {
               label: 'Releases',
-              href: 'https://github.com/Harry-kp/mercury/releases',
+              href: 'https://github.com/alvezgr/venus/releases',
             },
             {
               label: 'Issues',
-              href: 'https://github.com/Harry-kp/mercury/issues',
+              href: 'https://github.com/alvezgr/venus/issues',
             },
           ],
         },
       ],
-      copyright: `Built with obsessive minimalism by Harry-kp. Open Source under MIT.`,
+      copyright: `Venus is an independent fork of Mercury by Harshit Chaudhary (@Harry-kp). MIT licensed.`,
     },
     prism: {
       theme: prismThemes.github,

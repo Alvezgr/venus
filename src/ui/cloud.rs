@@ -17,7 +17,7 @@ pub(super) struct Picker {
     code: String,
 }
 
-impl MercuryApp {
+impl VenusApp {
     pub(super) fn open_cloud_picker(&mut self) {
         self.request_counter += 1;
         let id = self.request_counter;
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn picker_search_login_errors_and_cancelled_results() {
         let ctx = egui::Context::default();
-        let mut app = MercuryApp::new(&ctx);
+        let mut app = VenusApp::new(&ctx);
         app.cloud_picker = Some(Picker {
             id: 7,
             pending: false,
@@ -323,7 +323,7 @@ mod tests {
         });
         let mut harness = Harness::builder()
             .with_size(egui::vec2(1000.0, 700.0))
-            .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+            .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
         harness.run_steps(2);
         harness.get_by_label("Sign in with browser");
         harness.get_by_label("Use Insomnia login");
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     fn cancelled_download_restores_the_watcher_and_keeps_the_open_form() {
         let root = tempfile::tempdir().unwrap();
-        let mut app = MercuryApp::new(&egui::Context::default());
+        let mut app = VenusApp::new(&egui::Context::default());
         app.open_workspace(root.path().into(), None);
         app.url = "https://example.com/keep".into();
         app.sync_busy = Some("Downloading master…");
@@ -424,7 +424,7 @@ mod tests {
         ]);
         let (baseline, warnings) = Baseline::from_master("prj_test", "head", documents).unwrap();
         crate::insomnia_workspace::install_master(root.path(), &baseline, &warnings).unwrap();
-        let mut app = MercuryApp::new(&egui::Context::default());
+        let mut app = VenusApp::new(&egui::Context::default());
         app.sync_busy = Some("Downloading master…");
         app.on_cloud_download(Ok(Some((root.path().into(), "Fetched master".into()))));
         assert_eq!(app.workspace.as_deref(), Some(root.path()));

@@ -119,7 +119,7 @@ impl Cloud {
     }
 
     fn query(&self, query: &str, variables: Value) -> Result<Value, String> {
-        let endpoint = "https://api.insomnia.rest/graphql?mercury";
+        let endpoint = "https://api.insomnia.rest/graphql?venus";
         #[cfg(test)]
         let endpoint = self.endpoint.as_deref().unwrap_or(endpoint);
         let response = self
@@ -584,7 +584,7 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
         };
         if args.len() != required && !(command == "--insomnia-push" && args.len() == 4) {
             return Err(format!(
-                "Usage: mercury {command} <cloud-project-id>{}",
+                "Usage: venus {command} <cloud-project-id>{}",
                 if required == 3 {
                     " <workspace-folder>"
                 } else {
@@ -626,7 +626,7 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
                 command == "--insomnia-plan",
                 args.get(3)
                     .map(String::as_str)
-                    .unwrap_or("Update requests and environments from Mercury"),
+                    .unwrap_or("Update requests and environments from Venus"),
                 None,
             );
         }

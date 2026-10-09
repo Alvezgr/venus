@@ -13,3 +13,7 @@
 /*.mercury-sync.lock
 /insomnia-list-req.txt
 /silicon.yaml
+
+# Venus development workspaces and temporary writes
+/silicon-venus/
+/*.venus-sync.lock

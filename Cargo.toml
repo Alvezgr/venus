@@ -1,12 +1,12 @@
 [package]
-name = "mercury"
+name = "venus"
 version = "0.3.1"
 edition = "2021"
-description = "A fast, minimal API client for developers"
-authors = ["Harshit Chaudhary <harrykumar.kp@gmail.com>"]
+description = "A native Rust API client for Insomnia users, with cloud collection and environment sync"
+authors = ["Alvezgr", "Harshit Chaudhary <harrykumar.kp@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/Harry-kp/mercury"
-homepage = "https://github.com/Harry-kp/mercury"
+repository = "https://github.com/alvezgr/venus"
+homepage = "https://github.com/alvezgr/venus"
 keywords = ["api", "rest", "http", "client", "developer-tools"]
 categories = ["development-tools", "network-programming"]
 
@@ -45,14 +45,14 @@ lto = "thin"
 
 # Bundle configuration for cargo-bundle
 [package.metadata.bundle]
-name = "Mercury"
-identifier = "com.mercury.app"
+name = "Venus"
+identifier = "io.github.alvezgr.venus"
 icon = ["assets/icons/icon.icns"]
 category = "Developer Tool"
-short_description = "A fast, minimal API client"
+short_description = "A native API client for Insomnia users"
 long_description = """
-Mercury is a fast, minimal API client for developers who value simplicity.
-Built with Rust for native performance. No bloat, no subscriptions, no nonsense.
+Venus lets Insomnia users work with their cloud collections without running Insomnia.
+Built in Rust, with browser sign-in, request and environment sync, and commit previews.
 """
 copyright = "Copyright (c) 2024 Harshit Chaudhary. MIT License."
 

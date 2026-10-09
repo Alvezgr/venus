@@ -420,7 +420,7 @@ pub fn bar_frame() -> egui::Frame {
 // Buttons and rows
 // ---------------------------------------------------------------------------
 
-/// Draws the keyboard focus ring. Every control Mercury paints by hand takes
+/// Draws the keyboard focus ring. Every control Venus paints by hand takes
 /// Tab focus and activates on Space/Enter, but egui only draws a focus
 /// indicator for the widgets it paints itself — without this, a keyboard user
 /// has no idea where they are.
@@ -1367,7 +1367,7 @@ pub fn modal(
     // `Modal::should_close` only reacts to Esc from the second frame on (egui
     // records the top modal layer at end of frame), so check it ourselves.
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    let response = egui::Modal::new(egui::Id::new(("mercury_modal", title)))
+    let response = egui::Modal::new(egui::Id::new(("venus_modal", title)))
         .backdrop_color(Color32::from_black_alpha(if super::theme::is_dark() {
             110
         } else {

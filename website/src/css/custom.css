@@ -1,6 +1,6 @@
 /**
- * Mercury Documentation Theme
- * Inspired by Stripe, Linear, and the Mercury landing page
+ * Venus Documentation Theme
+ * Inspired by Stripe, Linear, and the Venus landing page
  * Dark-first, minimal, premium aesthetic
  */
 
@@ -12,7 +12,7 @@
    ============================================ */
 
 :root {
-  /* Mercury Brand Colors */
+  /* Venus Brand Colors */
   --ifm-color-primary: #00ff88;
   --ifm-color-primary-dark: #00cc6a;
   --ifm-color-primary-darker: #00b35c;
@@ -41,7 +41,7 @@
 
 /* Dark Mode (Default) */
 [data-theme='dark'] {
-  /* Backgrounds - matching Mercury landing page */
+  /* Backgrounds - matching Venus landing page */
   --ifm-background-color: #000000;
   --ifm-background-surface-color: #0a0a0a;
   --ifm-navbar-background-color: rgba(0, 0, 0, 0.95);

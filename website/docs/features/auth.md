@@ -6,7 +6,7 @@ sidebar_position: 4
 
 # Authentication
 
-The **Auth** tab edits the request's `Authorization` header. Mercury doesn't store auth anywhere else. Whatever you enter on the Auth tab is written to that header, and editing the header on the Headers tab updates the Auth tab.
+The **Auth** tab edits the request's `Authorization` header. Venus doesn't store auth anywhere else. Whatever you enter on the Auth tab is written to that header, and editing the header on the Headers tab updates the Auth tab.
 
 ## Choosing a type
 
@@ -23,7 +23,7 @@ The type is detected from the header. A value that starts with `Basic` is Basic,
 
 ## Basic
 
-Enter a **Username** and **Password**. Mercury encodes them into the header as you type. A preview of the header, with a copy button, appears below the fields.
+Enter a **Username** and **Password**. Venus encodes them into the header as you type. A preview of the header, with a copy button, appears below the fields.
 
 ## Bearer
 

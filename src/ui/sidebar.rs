@@ -1,6 +1,6 @@
 //! Left panel: filter box, Recent (unsaved requests) and the collection tree.
 
-use super::app::{Action, Dialog, MercuryApp};
+use super::app::{Action, Dialog, VenusApp};
 use super::icon::Icon;
 use super::theme::{theme, Layout, Space};
 use super::widgets::{
@@ -12,7 +12,7 @@ use crate::{storage, workspace};
 use eframe::egui::{self, Align, Margin, ScrollArea, Ui};
 use std::path::{Path, PathBuf};
 
-impl MercuryApp {
+impl VenusApp {
     pub fn sidebar(&mut self, ctx: &egui::Context) {
         let t = theme();
         let window = ctx.content_rect().width();

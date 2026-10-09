@@ -1,6 +1,6 @@
 //! Center panel: the URL bar and the Body / Params / Headers / Auth tabs.
 
-use super::app::{Action, MercuryApp, Tab};
+use super::app::{Action, Tab, VenusApp};
 use super::icon::Icon;
 use super::theme::{mono, semibold, theme, Layout, Radius, Space, Text};
 use super::widgets::{
@@ -13,7 +13,7 @@ use crate::{curl, vars};
 use eframe::egui::{self, Align, Margin, RichText, ScrollArea, Sense, Stroke, Ui, Vec2};
 use std::collections::BTreeSet;
 
-impl MercuryApp {
+impl VenusApp {
     pub fn editor(&mut self, ui: &mut Ui) {
         self.url_bar(ui);
         ui.add_space(Space::LG);

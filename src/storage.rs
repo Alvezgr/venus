@@ -1,6 +1,6 @@
-//! App data in `~/.mercury/`: session state, recent requests, history.
+//! App data in `~/.venus/`: session state, recent requests, history.
 //!
-//! Set `MERCURY_HOME` to use another directory (tests, or running a dev
+//! Set `VENUS_HOME` to use another directory (tests, or running a dev
 //! build without touching your real data).
 
 use crate::model::{AppState, HistoryEntry, HistorySummary, RecentRequest};
@@ -21,17 +21,56 @@ pub fn now() -> f64 {
 }
 
 pub(crate) fn dir() -> PathBuf {
-    if let Some(dir) = std::env::var_os("MERCURY_HOME") {
+    if let Some(dir) = std::env::var_os("VENUS_HOME").or_else(|| std::env::var_os("MERCURY_HOME")) {
         return PathBuf::from(dir);
     }
     dirs::home_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join(".mercury")
+        .join(".venus")
+}
+
+pub(crate) fn read(name: &str) -> std::io::Result<Vec<u8>> {
+    let legacy =
+        if std::env::var_os("VENUS_HOME").is_none() && std::env::var_os("MERCURY_HOME").is_none() {
+            dirs::home_dir().map(|home| home.join(".mercury"))
+        } else {
+            None
+        };
+    read_with_legacy(&dir(), legacy.as_deref(), name)
+}
+
+fn read_with_legacy(
+    directory: &std::path::Path,
+    legacy: Option<&std::path::Path>,
+    name: &str,
+) -> std::io::Result<Vec<u8>> {
+    let destination = directory.join(name);
+    match fs::read(&destination) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let Some(legacy) = legacy else {
+                return Err(error);
+            };
+            let bytes = fs::read(legacy.join(name))?;
+            let parent = destination
+                .parent()
+                .ok_or_else(|| std::io::Error::other("Invalid data path"))?;
+            fs::create_dir_all(parent)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                fs::set_permissions(directory, fs::Permissions::from_mode(0o700))?;
+                fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
+            }
+            crate::insomnia_workspace::atomic_write(&destination, &bytes)
+                .map_err(std::io::Error::other)?;
+            Ok(bytes)
+        }
+        result => result,
+    }
 }
 
 fn load<T: DeserializeOwned>(name: &str) -> Option<T> {
-    let content = fs::read_to_string(dir().join(name)).ok()?;
-    serde_json::from_str(&content).ok()
+    serde_json::from_slice(&read(name).ok()?).ok()
 }
 
 fn save<T: Serialize + ?Sized>(name: &str, value: &T) {
@@ -106,6 +145,55 @@ mod tests {
     use super::*;
     use crate::http::{HttpResponse, ResponseType};
     use crate::model::{HttpMethod, Request};
+
+    #[test]
+    fn legacy_profile_is_copied_without_overwriting_venus_or_touching_mercury() {
+        let parent = tempfile::tempdir().unwrap();
+        let legacy = parent.path().join(".mercury");
+        let venus = parent.path().join(".venus");
+        fs::create_dir_all(legacy.join("insomnia")).unwrap();
+        for name in [
+            "state.json",
+            "recent.json",
+            "history.json",
+            "insomnia/session.json",
+        ] {
+            fs::write(legacy.join(name), b"{\"example\":true}").unwrap();
+            assert_eq!(
+                read_with_legacy(&venus, Some(&legacy), name).unwrap(),
+                b"{\"example\":true}"
+            );
+            assert_eq!(fs::read(legacy.join(name)).unwrap(), b"{\"example\":true}");
+        }
+        fs::write(venus.join("insomnia/session.json"), b"null").unwrap();
+        assert_eq!(
+            read_with_legacy(&venus, Some(&legacy), "insomnia/session.json").unwrap(),
+            b"null"
+        );
+        let isolated = parent.path().join("isolated");
+        assert!(read_with_legacy(&isolated, None, "state.json").is_err());
+        assert!(!isolated.exists());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(venus.join("history.json"))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+            assert_eq!(
+                fs::metadata(venus.join("insomnia"))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o700
+            );
+        }
+    }
 
     fn entry(timestamp: f64) -> HistoryEntry {
         HistoryEntry {

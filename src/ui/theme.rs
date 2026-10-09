@@ -156,7 +156,7 @@ pub const LIGHT: Theme = Theme {
 };
 
 // ponytail: one window per process, so the active palette is a global instead
-// of a `&Theme` threaded through every widget. Split it if Mercury ever opens
+// of a `&Theme` threaded through every widget. Split it if Venus ever opens
 // a second viewport.
 static IS_DARK: AtomicBool = AtomicBool::new(true);
 
@@ -369,7 +369,7 @@ fn install(ctx: &egui::Context) {
 /// the caller skips drawing for one frame. `main` calls this before the first
 /// frame, so the real app never skips one.
 pub fn ensure_installed(ctx: &egui::Context) -> bool {
-    let id = egui::Id::new("mercury_fonts_installed");
+    let id = egui::Id::new("venus_fonts_installed");
     if ctx.memory(|m| m.data.get_temp::<bool>(id)).is_some() {
         return true;
     }
@@ -492,7 +492,7 @@ mod tests {
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
     }
 
-    /// Mercury's text is 11-13px, which WCAG treats as small: AA is 4.5:1.
+    /// Venus's text is 11-13px, which WCAG treats as small: AA is 4.5:1.
     /// Every color that carries readable text has to clear it on every
     /// surface it can land on, or the dimmest tiers turn into decoration.
     #[test]

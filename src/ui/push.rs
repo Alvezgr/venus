@@ -10,7 +10,7 @@ pub(super) struct PushDialog {
     recovery: bool,
 }
 
-impl MercuryApp {
+impl VenusApp {
     pub(super) fn open_push_dialog(&mut self) {
         if self.sync_busy.is_some() {
             return;
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn push_dialog_requires_message_and_preserves_draft_on_error() {
         let ctx = egui::Context::default();
-        let mut app = MercuryApp::new(&ctx);
+        let mut app = VenusApp::new(&ctx);
         app.push_dialog = Some(PushDialog {
             message: String::new(), fingerprint: Some("preview".into()), error: None,
             summary: "Master push plan (2 resources):\nUpdate Request: PDF\nUpdate Environment: Development".into(),
@@ -200,7 +200,7 @@ mod tests {
         });
         let mut harness = Harness::builder()
             .with_size(egui::vec2(1000.0, 700.0))
-            .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+            .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
         harness.run_steps(2);
         assert!(harness
             .get_by_role_and_label(egui::accesskit::Role::Button, "Push to master")
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn empty_preview_disables_push_and_recovery_can_resume() {
         let ctx = egui::Context::default();
-        let mut app = MercuryApp::new(&ctx);
+        let mut app = VenusApp::new(&ctx);
         app.push_dialog = Some(PushDialog {
             message: "Saved message".into(),
             fingerprint: None,
@@ -244,7 +244,7 @@ mod tests {
         });
         let mut harness = Harness::builder()
             .with_size(egui::vec2(1000.0, 700.0))
-            .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+            .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
         harness.run_steps(2);
         assert!(harness
             .get_by_role_and_label(egui::accesskit::Role::Button, "Push to master")

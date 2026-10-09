@@ -29,13 +29,13 @@ mod cloud;
 #[path = "push.rs"]
 mod push;
 
-const ISSUES_URL: &str = "https://github.com/Harry-kp/mercury/issues";
-const RELEASES_URL: &str = "https://github.com/Harry-kp/mercury/releases";
-const DOCS_URL: &str = "https://harry-kp.github.io/mercury/docs/getting-started";
+const ISSUES_URL: &str = "https://github.com/alvezgr/venus/issues";
+const RELEASES_URL: &str = "https://github.com/alvezgr/venus/releases";
+const DOCS_URL: &str = "https://github.com/alvezgr/venus/blob/master/README.md";
 const AUTOSAVE_SECS: f64 = 5.0;
 const CRUMB_CHARS: usize = 28;
 
-/// Every command Mercury can run. The keyboard table and the command palette
+/// Every command Venus can run. The keyboard table and the command palette
 /// are both views over this list, so a new action needs no extra plumbing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -219,7 +219,7 @@ pub const INSOMNIA: Importer = Importer {
     run: import::import_insomnia,
 };
 
-pub struct MercuryApp {
+pub struct VenusApp {
     // Workspace
     pub workspace: Option<PathBuf>,
     pub tree: Vec<CollectionItem>,
@@ -300,7 +300,7 @@ pub struct MercuryApp {
     client: reqwest::blocking::Client,
 }
 
-impl MercuryApp {
+impl VenusApp {
     pub fn new(ctx: &egui::Context) -> Self {
         let (tx, rx) = channel();
         let mut app = Self {
@@ -456,7 +456,7 @@ impl MercuryApp {
         } else {
             self.notify(
                 format!(
-                    "{summary}. Mercury could not carry over: {}",
+                    "{summary}. Venus could not carry over: {}",
                     count.skipped.join("; ")
                 ),
                 true,
@@ -1499,7 +1499,7 @@ fn shortcuts_modal(ctx: &egui::Context) -> ModalAction {
     })
 }
 
-impl MercuryApp {
+impl VenusApp {
     /// One frame. Separate from `eframe::App::update` so tests can drive it.
     pub fn frame(&mut self, ctx: &egui::Context) {
         self.ctx = ctx.clone();
@@ -1563,7 +1563,7 @@ impl MercuryApp {
     }
 }
 
-impl eframe::App for MercuryApp {
+impl eframe::App for VenusApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.frame(ctx);
     }
@@ -1590,7 +1590,7 @@ impl eframe::App for MercuryApp {
     }
 }
 
-impl MercuryApp {
+impl VenusApp {
     fn start_sync(&mut self, pull: bool) {
         if self.sync_busy.is_some() {
             return;
@@ -1616,7 +1616,7 @@ impl MercuryApp {
         self.spawn(move || {
             if !pull {
                 let (message, fingerprint) = push_options.unwrap_or_else(|| {
-                    ("Update requests and environments from Mercury".into(), None)
+                    ("Update requests and environments from Venus".into(), None)
                 });
                 let result =
                     crate::insomnia_workspace::SyncLock::acquire(&root).and_then(|_lock| {
@@ -1750,12 +1750,12 @@ mod tests {
         crate::insomnia_workspace::install_master(root.path(), &baseline, &warnings).unwrap();
         let file = root.path().join(&baseline.files["req_test"].path);
         let ctx = egui::Context::default();
-        let mut app = MercuryApp::new(&ctx);
+        let mut app = VenusApp::new(&ctx);
         app.open_workspace(root.path().into(), None);
         app.open_file(&file);
         let mut harness = Harness::builder()
             .with_size(egui::vec2(1000.0, 700.0))
-            .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+            .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
         harness.run_steps(2);
         harness.get_by_label("master").click();
         harness.run_steps(2);
@@ -1812,7 +1812,7 @@ mod tests {
     #[test]
     fn sync_stops_when_the_open_request_cannot_be_saved() {
         let root = tempfile::tempdir().unwrap();
-        let mut app = MercuryApp::new(&egui::Context::default());
+        let mut app = VenusApp::new(&egui::Context::default());
         app.open_workspace(root.path().into(), None);
         app.sync_project = Some("prj_test".into());
         app.current_file = Some(root.path().join("missing/request.json"));

@@ -1,7 +1,7 @@
 //! Data types shared across the app, and the on-disk request file format.
 //!
 //! Everything here is serialized somewhere (workspace `.json` files or
-//! `~/.mercury/*.json`), so field names are a compatibility contract.
+//! `~/.venus/*.json`), so field names are a compatibility contract.
 
 use crate::http::HttpResponse;
 use serde::{Deserialize, Serialize};
@@ -70,7 +70,7 @@ pub struct RequestFile {
     pub headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub body: String,
-    /// Stable cloud identity; absent on ordinary Mercury requests.
+    /// Stable cloud identity; absent on ordinary Venus requests.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub insomnia_id: Option<String>,
 }
@@ -102,7 +102,7 @@ pub struct RecentRequest {
     pub timestamp: f64,
 }
 
-/// One sent request + its response, stored in `~/.mercury/history.json`.
+/// One sent request + its response, stored in `~/.venus/history.json`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HistoryEntry {
     pub timestamp: f64,
@@ -141,7 +141,7 @@ pub enum ThemeMode {
     Dark,
 }
 
-/// Session restored on launch (`~/.mercury/state.json`).
+/// Session restored on launch (`~/.venus/state.json`).
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct AppState {

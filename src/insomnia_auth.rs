@@ -107,14 +107,13 @@ pub fn native_session() -> Result<Value, String> {
 }
 
 pub fn load_session() -> Result<Value, String> {
-    let path = session_path();
-    if !path.exists() {
-        return native_session();
-    }
-    let session: Value = serde_json::from_slice(
-        &fs::read(path).map_err(|_| "Cannot read Mercury's Insomnia login".to_string())?,
-    )
-    .map_err(|_| "Invalid saved login; sign in again".to_string())?;
+    let bytes = match storage::read("insomnia/session.json") {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return native_session(),
+        Err(_) => return Err("Cannot read Venus's Insomnia login".into()),
+    };
+    let session: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| "Invalid saved login; sign in again".to_string())?;
     if session["id"].as_str().is_none_or(str::is_empty) {
         return Err("Sign in to Insomnia Cloud".into());
     }

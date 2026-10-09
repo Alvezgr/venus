@@ -1,113 +1,102 @@
 <p align="center">
-  <img src="assets/icons/icon.png" alt="Mercury" width="80" height="80">
+  <img src="assets/icons/icon.png" alt="Venus" width="80" height="80">
 </p>
 
-<h1 align="center">Mercury</h1>
+<h1 align="center">Venus</h1>
 
 <p align="center">
-  <strong>API Testing for Purists.</strong><br>
-  Instant startup. 60fps UI. $0 forever.
+  <strong>Your Insomnia collections, in a native Rust app.</strong>
 </p>
 
-<p align="center">
-  <a href="https://harry-kp.github.io/mercury/docs/getting-started">Documentation</a> •
-  <a href="https://github.com/Harry-kp/mercury/releases">Download</a> •
-  <a href="https://github.com/users/Harry-kp/projects/5">Roadmap</a> •
-  <a href="#your-requests-are-files">Requests are files</a> •
-  <a href="#why-mercury">Why Mercury</a> •
-  <a href="#contributing">Contributing</a>
-</p>
+Venus is a lightweight, native API client for Insomnia users who want to work
+with their existing cloud collections without running Insomnia. Built in Rust,
+with browser sign-in, request and environment sync, and commit previews.
 
-<p align="center">
-  <a href="https://github.com/Harry-kp/mercury/releases"><img src="https://img.shields.io/github/v/release/Harry-kp/mercury?style=flat-square&color=00ff88" alt="Release"></a>
-  <img src="https://img.shields.io/badge/homebrew-cask-orange?style=flat-square&logo=homebrew" alt="Homebrew Cask">
-  <a href="https://github.com/Harry-kp/mercury/actions"><img src="https://img.shields.io/github/actions/workflow/status/Harry-kp/mercury/ci.yml?branch=master&style=flat-square&label=build" alt="Build Status"></a>
-  <a href="https://github.com/Harry-kp/mercury/blob/master/LICENSE"><img src="https://img.shields.io/github/license/Harry-kp/mercury?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
-</p>
+- Sign in to Insomnia in your browser and pick a collection; no export needed.
+- Pull requests and environments from master, including base inheritance.
+- Review saved changes, write a commit message, and push to share with teammates.
+- Keep working with local JSON requests and dotenv files when you do not need sync.
 
-<p align="center">
-  <a href="https://github.com/Harry-kp/mercury/stargazers"><img src="https://img.shields.io/github/stars/Harry-kp/mercury?style=social" alt="GitHub stars"></a>
-  <a href="https://github.com/Harry-kp/mercury/issues"><img src="https://img.shields.io/github/issues/Harry-kp/mercury?style=flat-square" alt="Issues"></a>
-  <a href="https://github.com/Harry-kp/mercury/pulls"><img src="https://img.shields.io/github/issues-pr/Harry-kp/mercury?style=flat-square" alt="Pull Requests"></a>
-  <a href="https://github.com/Harry-kp/mercury/discussions"><img src="https://img.shields.io/github/discussions/Harry-kp/mercury?style=flat-square" alt="Discussions"></a>
-</p>
+[Installation](#installation) · [Cloud sync guide](INSOMNIA_SYNC.md) ·
+[Documentation](website/docs/getting-started.md) ·
+[Source](https://github.com/alvezgr/venus)
 
-<p align="center">
-  <img src="assets/media/demo.gif" alt="Mercury: open a collection, send a request, find anything in the response" width="100%">
-</p>
+## Installation
 
-<p align="center">
-  <sub><a href="assets/media/demo.mp4">Watch in higher quality (MP4, 32s)</a></sub>
-</p>
+Build this checkout to use Venus's Insomnia features. Mercury's installers and
+Homebrew cask install the upstream app, not Venus.
 
-## Quick start
+From the repository root:
 
 ```bash
-brew install --cask harry-kp/tap/mercury
+cargo build --release
+./target/release/venus
 ```
 
-Launch from **Applications**, or run `mercury`. Universal build — Apple Silicon and Intel.
+On Linux, if Wayland cannot create a window, run:
 
-> The first launch says the developer cannot be verified: right-click Mercury in Applications and choose **Open**. Mercury is unsigned because a Developer ID costs $99/year.
+```bash
+env -u WAYLAND_DISPLAY WINIT_UNIX_BACKEND=x11 ./target/release/venus
+```
+
+The desktop launcher below applies this X11 workaround. The native app is Rust;
+the optional documentation website has a separate JavaScript toolchain.
+OpenSSL development libraries and `pkg-config` are required for the cloud bridge.
+Linux has been verified; the Insomnia bridge has not yet been verified on macOS
+or Windows.
 
 <details>
-<summary><strong>Windows, Linux, or without Homebrew</strong></summary>
+<summary><strong>Linux: build this checkout and install as an app</strong></summary>
 
-**macOS / Linux**
-
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Harry-kp/mercury/releases/latest/download/mercury-installer.sh | sh
-```
-
-**Windows (PowerShell)**
-
-```powershell
-irm https://github.com/Harry-kp/mercury/releases/latest/download/mercury-installer.ps1 | iex
-```
-
-Then run `mercury`. The installer puts the binary in `~/.cargo/bin` — if the shell can't find it, restart your terminal.
-
-On Windows, SmartScreen says "Windows protected your PC": click **More info** → **Run anyway**.
-
-On Linux, to get it in your app launcher:
+Run these commands from the repository root to install your local version,
+including this fork's Insomnia Cloud Sync features:
 
 ```bash
-cat > ~/.local/share/applications/mercury.desktop << 'EOF'
+cargo build --release
+
+mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons
+install -m 755 target/release/venus ~/.local/bin/venus
+install -m 644 assets/icons/icon.png ~/.local/share/icons/venus.png
+
+cat > ~/.local/share/applications/venus.desktop <<EOF
 [Desktop Entry]
-Name=Mercury
-Exec=$HOME/.cargo/bin/mercury
 Type=Application
-Categories=Development;
+Name=Venus
+Comment=API client with Insomnia Cloud Sync
+Exec=/usr/bin/env -u WAYLAND_DISPLAY WINIT_UNIX_BACKEND=x11 $HOME/.local/bin/venus
+Icon=$HOME/.local/share/icons/venus.png
+Terminal=false
+Categories=Development;Network;
 EOF
 ```
 
-**Manual download** — [every platform, from Releases](https://github.com/Harry-kp/mercury/releases).
+Close older Venus windows, then search **Venus** in your applications menu.
+The launcher uses X11 through XWayland on a Wayland desktop, to avoid the
+Glutin window-creation error encountered with Wayland on this setup.
 
-**From source** — `git clone`, then `cargo build --release`.
+After code changes, close Venus and update the installed binary:
+
+```bash
+cargo build --release
+install -m 755 target/release/venus ~/.local/bin/venus
+```
+
+The launcher and icon only need to be installed once. These commands install
+under your home directory and do not require `sudo`.
 
 </details>
 
-<details>
-<summary><strong>macOS says Mercury is damaged, or won't open</strong></summary>
+## Existing Mercury data
 
-Right-click in Applications → **Open** is the normal path. If macOS refuses outright:
+Venus stores app state, history and its Insomnia login in `~/.venus/`. On first
+read, missing files are copied from `~/.mercury/`; existing Venus files always
+win, and the Mercury originals remain intact. Your workspace folders and
+`.insomnia-sync` baselines keep working without changes.
 
-```bash
-xattr -d com.apple.quarantine /Applications/Mercury.app
-```
-
-For the shell installer's binary rather than the app bundle:
-
-```bash
-xattr -d com.apple.quarantine ~/.cargo/bin/mercury
-```
-
-The Homebrew cask ships a signed, sealed universal `.app`. Don't hand-build a `Mercury.app` around the bare binary — an unsigned bundle is what makes macOS call it damaged instead of merely unverified.
-
-</details>
-
----
+Set `VENUS_HOME` for an isolated profile. `MERCURY_HOME` remains a compatibility
+alias; `VENUS_HOME` takes priority. Neither override imports your normal profile.
+Venus's executable, desktop launcher and application identifier are separate
+from Mercury's.
 
 ## Your requests are files
 
@@ -135,7 +124,7 @@ api/
 }
 ```
 
-Grep it, diff it, commit it, edit it in VS Code — Mercury picks up outside edits live. `headers` and `body` are optional, and headers are written in sorted order so git diffs stay clean.
+Grep it, diff it, commit it, edit it in VS Code — Venus picks up outside edits live. `headers` and `body` are optional, and headers are written in sorted order so git diffs stay clean.
 
 **Environments** are `.env` files in the workspace root. Pick one from the top-right menu or cycle with `⌘ E`; `{{NAME}}` is substituted into the URL, headers and body when you send. Undefined variables are flagged on the tab that holds them. Production shows in red, staging in amber.
 
@@ -147,12 +136,14 @@ TOKEN="dev token"
 
 ---
 
-## Why Mercury
+## Why Venus
 
-- **Native, not Electron.** Rust + egui draw directly on the GPU. One ~9 MB binary, no runtime, no splash screen.
-- **Local only.** No account, no cloud, no telemetry. Your secrets stay on your disk.
+- **Native Rust app.** Rust and egui render the interface without Electron.
+- **Your Insomnia collections.** Sign in through your browser, select a cloud collection, and sync requests and environments without running Insomnia.
+- **Review before sharing.** Preview changes and write a cloud commit message before pushing to master.
+- **Local workspaces.** Requests stay in editable JSON files. Ordinary `.env` files remain local; cloud sync runs when you choose it.
 - **Keyboard first.** `⌘ K` opens a palette over every request and command, `⌘ F` finds anything in a response, `?` lists the rest.
-- **No setup tax.** Type `localhost:3000/api`, pick JSON or Form, hit send. Mercury fills in the scheme, the `Content-Type` and the decoding so the first request works.
+- **No setup tax.** Type `localhost:3000/api`, pick JSON or Form, hit send. Venus fills in the scheme, the `Content-Type` and the decoding so the first request works.
 - **Light or dark.** Follows your system theme, or `⌘ D` pins one. Vector icons and bundled fonts, so it looks the same on every OS.
 
 ### What's in it
@@ -204,36 +195,32 @@ There's no settings screen. These are fixed:
 | Redirects | Followed (up to 10) |
 | Largest response downloaded | 10 MB |
 | Largest body shown inline | 148 KB (bigger ones offer **Save**) |
-| App data | `~/.mercury/` (session, recent, history). Set `MERCURY_HOME` to use another folder. |
+| App data | `~/.venus/` (session, recent, history). Set `VENUS_HOME` to use another folder. |
 
 ---
 
-## What Mercury is NOT
+## Insomnia Cloud Sync
 
-We deliberately don't build cloud sync, team collaboration, AI assistants, plugins, user accounts or analytics. They aren't missing features; we chose to leave them out.
-
-### Local fork: Insomnia Cloud bridge
-
-This checkout adds a Rust bridge for an existing Insomnia Cloud collection.
-Mercury's code stays local; request and environment changes sync with Insomnia's
+Venus connects to your existing Insomnia Cloud collections using a Rust bridge.
+Venus's code stays local; request and environment changes sync with Insomnia's
 **master**. Choose **Sync → Browse cloud collections…** to sign in through your
 browser or use the installed Insomnia login, pick a collection, and download
 master into an empty folder. No export is needed. In a fetched workspace,
 click the sync arrows and **master** in the bottom bar to pull or push directly.
-For the initial fetch or terminal commands, close Mercury first:
+For the initial fetch or terminal commands, close Venus first:
 
 ```bash
 cargo build
-./target/debug/mercury --insomnia-fetch <cloud-project-id> <workspace-folder>
-./target/debug/mercury --insomnia-collections
-./target/debug/mercury --insomnia-plan <cloud-project-id> <workspace-folder>
-./target/debug/mercury --insomnia-push <cloud-project-id> <workspace-folder>
+./target/debug/venus --insomnia-fetch <cloud-project-id> <workspace-folder>
+./target/debug/venus --insomnia-collections
+./target/debug/venus --insomnia-plan <cloud-project-id> <workspace-folder>
+./target/debug/venus --insomnia-push <cloud-project-id> <workspace-folder>
 ```
 
-Open the fetched folder in Mercury to edit. Fetch refuses unpushed edits; push
+Open the fetched folder in Venus to edit. Fetch refuses unpushed edits; push
 checks cloud conflicts. Cloud environments are downloaded and their edits are
 synced, including base inheritance. Request files include
-an optional `insomnia_id` that Mercury preserves on save and clears on duplicate.
+an optional `insomnia_id` that Venus preserves on save and clears on duplicate.
 Build dependencies include OpenSSL development libraries. See
 [INSOMNIA_SYNC.md](INSOMNIA_SYNC.md) for this collection's commands, verification,
 recovery and execution limits.
@@ -249,13 +236,15 @@ cargo run      # run the app
 cargo test     # unit tests + a headless UI smoke test
 ```
 
-## License
+## Origin and license
 
-MIT. Do whatever you want.
+Venus is an independent fork of [Mercury](https://github.com/Harry-kp/mercury),
+created by Harshit Chaudhary (@Harry-kp). It adds an Insomnia-focused workflow.
+The original MIT license and copyright are retained in [LICENSE](LICENSE).
 
 ---
 
 <p align="center">
-  Built with obsessive minimalism.<br>
+  Based on Mercury by<br>
   <a href="https://github.com/Harry-kp">@Harry-kp</a>
 </p>

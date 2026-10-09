@@ -1,4 +1,4 @@
-//! Mercury: a fast, minimal, file-based API client. See CLAUDE.md for the map.
+//! Venus: a fast, minimal, file-based API client. See CLAUDE.md for the map.
 // Without this, launching the .exe on Windows opens a console window behind
 // the GUI. Debug builds keep the console so `eprintln!` still shows up.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -52,7 +52,8 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1280.0, 840.0])
             .with_min_inner_size([900.0, 620.0])
-            .with_title("Mercury")
+            .with_title("Venus")
+            .with_app_id("io.github.alvezgr.venus")
             .with_icon(egui::IconData {
                 rgba: icon.into_raw(),
                 width,
@@ -61,11 +62,11 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "Mercury",
+        "Venus",
         options,
         Box::new(|cc| {
             ui::theme::ensure_installed(&cc.egui_ctx);
-            Ok(Box::new(ui::app::MercuryApp::new(&cc.egui_ctx)))
+            Ok(Box::new(ui::app::VenusApp::new(&cc.egui_ctx)))
         }),
     )
 }

@@ -6,7 +6,7 @@ sidebar_position: 3
 
 # Performance
 
-Mercury aims to stay responsive, and it does this with a few design choices rather than tuning.
+Venus aims to stay responsive, and it does this with a few design choices rather than tuning.
 
 ## Native rendering
 
@@ -16,7 +16,7 @@ Mercury aims to stay responsive, and it does this with a few design choices rath
 
 ## Response size limits
 
-Two constants in `src/http.rs` control how much of a response Mercury handles:
+Two constants in `src/http.rs` control how much of a response Venus handles:
 
 | Limit | Value | What happens |
 |-------|-------|--------------|
@@ -29,5 +29,5 @@ Images and binary content (PDF, audio, video, archives, `application/octet-strea
 
 ## Lazy loading
 
-- **Folders.** At startup Mercury reads only the workspace root. It reads a subfolder the first time you expand it.
+- **Folders.** At startup Venus reads only the workspace root. It reads a subfolder the first time you expand it.
 - **History.** History isn't read at startup. It is loaded the first time you open the history list or send a request, and only a summary of each entry is kept in memory (method, URL, status, duration). The full request and response are read from disk when you click an entry.

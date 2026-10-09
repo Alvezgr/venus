@@ -28,7 +28,7 @@ API_TOKEN="prod token"
 
 - Pick the environment in the menu at the **top right** of the window. **None** turns variables off.
 - `⌘ E` switches to the next environment. After the last one it goes to None, then starts over.
-- When you open a workspace, Mercury selects the first file (alphabetically) whose name contains `.dev`, or else the first file. When Mercury reopens the workspace at launch, it restores the environment you last had selected.
+- When you open a workspace, Venus selects the first file (alphabetically) whose name contains `.dev`, or else the first file. When Venus reopens the workspace at launch, it restores the environment you last had selected.
 - Environment names that contain `prod` are shown in red, and names that contain `stag` in amber, so it's harder to send to production by mistake.
 
 ## Insomnia Cloud environments
@@ -78,7 +78,7 @@ Authorization: Bearer {{API_TOKEN}}
 
 ## Editing environment files
 
-Edit `.env` files in any editor. Mercury picks up changes right away: new or removed env files update the picker (your selection is kept), and edited values apply to the next request.
+Edit `.env` files in any editor. Venus picks up changes right away: new or removed env files update the picker (your selection is kept), and edited values apply to the next request.
 
 ## Keeping secrets out of Git
 

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Venus branding for the Insomnia-focused Mercury fork, with separate binaries,
+  app identity and data directory, plus migration of existing Mercury profiles.
 - Review collection changes before pushing, with a custom cloud commit title
   and description, stale-preview checks, and interrupted-push recovery.
 - Download and push Insomnia Cloud environments as managed JSON files, with

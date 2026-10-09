@@ -1,4 +1,4 @@
-"""Composites captured Mercury frames into a product film.
+"""Composites captured Venus frames into a product film.
 
 Everything is drawn here rather than in ffmpeg filters: easing, camera moves,
 title cards, callouts and transitions all need to be choreographed against
@@ -11,12 +11,12 @@ ROOT = pathlib.Path(__file__).parent
 FRAMES = ROOT / "frames"
 OUT = ROOT / "out"
 import os
-REPO = pathlib.Path(os.environ.get("MERCURY_REPO") or (sys.argv[1] if len(sys.argv) > 1 else "."))
+REPO = pathlib.Path(os.environ.get("VENUS_REPO") or (sys.argv[1] if len(sys.argv) > 1 else "."))
 
 W, H, FPS = 1600, 1000, 30           # render size / rate
 SHOT = (1600, 1000)                   # captured app frame size
 
-# Mercury's own palette (src/ui/theme.rs) so the film matches the product
+# Venus's own palette (src/ui/theme.rs) so the film matches the product
 BG        = (11, 13, 16)
 PANEL     = (18, 21, 25)
 INK       = (228, 232, 238)
@@ -255,7 +255,7 @@ def sc_open(t, d):
     if t < 2.6:
         c.alpha_composite(glow, (W // 2 - size // 2, gy))
     c.alpha_composite(lg, (W // 2 - size // 2, gy))
-    kinetic(c, (W // 2, int(H * 0.50)), "Mercury", font(SEMI, 112), INK, t - 0.55, "ma", 0.0)
+    kinetic(c, (W // 2, int(H * 0.50)), "Venus", font(SEMI, 112), INK, t - 0.55, "ma", 0.0)
     kinetic(c, (W // 2, int(H * 0.635)), "A fast, minimal API client", font(REG, 40), MUTED, t - 0.95, "ma")
     underline(c, W // 2 - 90, int(H * 0.72), 180, ACCENT, t - 1.35, 4)
     kinetic(c, (W // 2, int(H * 0.775)), "Your requests are just files", font(REG, 32), ACCENT_HI, t - 1.6, "ma")
@@ -349,7 +349,7 @@ def sc_end(t, d):
     # the install line, in a terminal-ish slab
     f = font(MONO, 34)
     d2 = ImageDraw.Draw(c)
-    cmd = "brew install Harry-kp/tap/mercury"
+    cmd = "brew install Harry-kp/tap/venus"
     tw = text_w(d2, cmd, f)
     bw, bh = tw + 76, 78
     q = ease_out((t - 0.85) / 0.55)
@@ -362,7 +362,7 @@ def sc_end(t, d):
         ld.text((x + 30, y + bh / 2), "$", font=f, fill=ACCENT + (int(255 * q),), anchor="lm")
         ld.text((x + 60, y + bh / 2), cmd, font=f, fill=INK + (int(255 * q),), anchor="lm")
         c.alpha_composite(layer)
-    kinetic(c, (W // 2, int(H * 0.735)), "github.com/Harry-kp/mercury", font(REG, 33), MUTED, t - 1.3, "ma")
+    kinetic(c, (W // 2, int(H * 0.735)), "github.com/Harry-kp/venus", font(REG, 33), MUTED, t - 1.3, "ma")
     if t > d - 0.6:
         fade(c, (t - (d - 0.6)) / 0.6)
     return c
@@ -419,7 +419,7 @@ if __name__ == "__main__":
 # How the footage was captured
 #
 # The app frames are the real binary, not a mock: a temporary `src/shots.rs`
-# drives MercuryApp through a scripted beat list and writes one PNG per
+# drives VenusApp through a scripted beat list and writes one PNG per
 # logical frame from the app's own framebuffer (ViewportCommand::Screenshot),
 # so typing, sending and highlighting are all genuine. That harness is not
 # committed — it exists only while a film is being cut. This file is kept so

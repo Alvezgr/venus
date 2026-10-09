@@ -8,24 +8,26 @@ sidebar_position: 99
 
 ## General
 
-### What is Mercury?
+### What is Venus?
 
-Mercury is a desktop API client written in Rust with egui. It's a single native binary with no Electron or web view, and it stores requests as plain `.json` files in a folder you choose.
+Venus is a desktop API client written in Rust with egui. It lets Insomnia users work with their cloud collections without running Insomnia, and stores requests as plain `.json` files in a folder you choose.
 
 ### Is it free?
 
-Yes. Mercury is MIT-licensed and open source, with no account or subscription. The source is at [github.com/Harry-kp/mercury](https://github.com/Harry-kp/mercury).
+Yes. Venus is MIT-licensed and open source. Venus has no separate account; cloud sync uses your existing Insomnia account. The source is at [github.com/alvezgr/venus](https://github.com/alvezgr/venus).
 
 ### Which platforms are supported?
 
-Releases are built for macOS (Apple Silicon and Intel), Linux (x86_64 and ARM64) and Windows (x64). See [Installation](/docs/getting-started#installation).
+The native app builds for macOS, Linux and Windows. The Insomnia bridge has been verified on Linux; other platforms need verification. See [Installation](/docs/getting-started#installation).
 
 ### Where is my data stored?
 
 - **Requests and environments** are in your workspace folder, as `.json` and `.env*` files.
-- **App data** is in `~/.mercury/`: `state.json` (the last session), `recent.json` (unsaved requests you've sent) and `history.json` (request history). Set the `MERCURY_HOME` environment variable to use a different directory.
+- **App data** is in `~/.venus/`: `state.json` (the last session), `recent.json` (unsaved requests you've sent) and `history.json` (request history). Set the `VENUS_HOME` environment variable to use a different directory.
 
-Mercury doesn't upload anything. Network requests go only to the APIs you call and, if you use the **Help** menu, to GitHub links opened in your browser.
+Venus sends API requests to the endpoints you choose. Browser sign-in and collection discovery connect to Insomnia; explicit pushes upload saved collection and environment changes to Insomnia Cloud. Ordinary dotenv files stay local.
+
+Missing app state and login files are copied from `~/.mercury/` on first read. Existing Venus files are never overwritten; `MERCURY_HOME` remains an isolated-profile compatibility alias.
 
 ### Are there settings?
 
@@ -37,7 +39,7 @@ No. The timeout (30 s), redirect handling and response size limits are fixed. Se
 
 Use **Import from Postman…** or **Import from Insomnia…** in the workspace menu (the folder chip in the top bar). See [Import & Export](/docs/features/import-export) for what gets imported and where the files go.
 
-### How do I get requests out of Mercury?
+### How do I get requests out of Venus?
 
 Request files are plain JSON, so you can copy them, commit them or send them to someone. To share one request, press `⌘ Shift C` to copy it as a cURL command.
 
@@ -68,7 +70,7 @@ username=john&password=secret
 
 No. Multipart bodies aren't supported.
 
-### Does Mercury support GraphQL?
+### Does Venus support GraphQL?
 
 You can send GraphQL as a normal `POST` with a JSON body and `Content-Type: application/json`:
 
@@ -80,7 +82,7 @@ There's no schema explorer.
 
 ### WebSockets, gRPC?
 
-Not supported. Mercury only sends HTTP requests.
+Not supported. Venus only sends HTTP requests.
 
 ### Are cookies kept?
 
@@ -88,14 +90,14 @@ Yes, for the current session only. See [Cookies](/docs/features/requests#cookies
 
 ## Troubleshooting
 
-### Mercury won't start
+### Venus won't start
 
-- **macOS:** if Gatekeeper blocks Mercury, open **System Settings → Privacy & Security** and click **Allow Anyway**.
+- **macOS:** if Gatekeeper blocks Venus, open **System Settings → Privacy & Security** and click **Allow Anyway**.
 - **Windows:** at the SmartScreen prompt, click **More info**, then **Run anyway**.
 
 ### Edits from my editor don't show up
 
-Mercury reloads the open request when its file changes, **unless you have unsaved edits in Mercury** (shown by a dot after the name in the breadcrumb). In that case Mercury keeps its own version. For edits to `.env` values, select the environment again in the picker.
+Venus reloads the open request when its file changes, **unless you have unsaved edits in Venus** (shown by a dot after the name in the breadcrumb). In that case Venus keeps its own version. For edits to `.env` values, select the environment again in the picker.
 
 ### A large response isn't displayed
 
@@ -103,4 +105,4 @@ Text bodies over 148 KB aren't shown inline. Click **Save** and open the file in
 
 ## Contributing
 
-Bug reports and pull requests are welcome on [GitHub](https://github.com/Harry-kp/mercury/issues). **Report an issue** in the `⋯` menu opens the issue tracker. When you report a bug, include your Mercury version, your OS, the steps to reproduce, and what you expected to happen.
+Bug reports and pull requests are welcome on [GitHub](https://github.com/alvezgr/venus/issues). **Report an issue** in the `⋯` menu opens the issue tracker. When you report a bug, include your Venus version, your OS, the steps to reproduce, and what you expected to happen.

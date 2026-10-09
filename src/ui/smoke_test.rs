@@ -2,7 +2,7 @@
 //! egui_kittest (clicks, keys, typing) against a local HTTP server.
 //! Copy a block from here to reproduce a UI bug before fixing it.
 
-use super::app::{Dialog, MercuryApp};
+use super::app::{Dialog, VenusApp};
 use eframe::egui::{self, accesskit, Key, Modifiers};
 use egui_kittest::{
     kittest::{NodeT, Queryable},
@@ -40,7 +40,7 @@ fn echo_server() -> String {
     format!("http://{addr}")
 }
 
-fn wait_for_response(harness: &mut Harness<'_, MercuryApp>) {
+fn wait_for_response(harness: &mut Harness<'_, VenusApp>) {
     for _ in 0..200 {
         harness.step();
         if harness.state().in_flight.is_none() {
@@ -56,7 +56,7 @@ fn wait_for_response(harness: &mut Harness<'_, MercuryApp>) {
 fn open_send_edit_and_save() {
     let dir = tempfile::TempDir::new().unwrap();
     // SAFETY: the only test in the crate that touches env vars / storage on disk
-    unsafe { std::env::set_var("MERCURY_HOME", dir.path().join("home")) };
+    unsafe { std::env::set_var("VENUS_HOME", dir.path().join("home")) };
     let ws = dir.path().join("ws");
     std::fs::create_dir_all(ws.join("users")).unwrap();
     let server = echo_server();
@@ -81,11 +81,11 @@ fn open_send_edit_and_save() {
     .unwrap();
 
     let ctx = egui::Context::default();
-    let mut app = MercuryApp::new(&ctx);
+    let mut app = VenusApp::new(&ctx);
     app.open_workspace(ws.clone(), None);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1200.0, 800.0))
-        .build_state(|ctx, app: &mut MercuryApp| app.frame(ctx), app);
+        .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
     harness.run_steps(2);
     assert_eq!(harness.state().env_name(), Some(".env.dev"));
 
@@ -105,7 +105,7 @@ fn open_send_edit_and_save() {
     harness.key_press(Key::Escape);
     harness.run_steps(2);
 
-    // Every control Mercury draws by hand has to name itself in the
+    // Every control Venus draws by hand has to name itself in the
     // accessibility tree, or it reaches a screen reader — and the keyboard
     // Tab order — as an anonymous box. The text *inside* a row is not
     // enough: it is the row itself that takes focus and the click.
@@ -121,7 +121,7 @@ fn open_send_edit_and_save() {
     // Panel widths must not drift. A widget that ends up wider than the space
     // it was handed feeds straight back into the panel width, and the panel
     // grows a little every frame — and springs back after you resize it.
-    let panel_width = |harness: &Harness<'_, MercuryApp>, name: &str| {
+    let panel_width = |harness: &Harness<'_, VenusApp>, name: &str| {
         egui::containers::panel::PanelState::load(&harness.ctx, egui::Id::new(name))
             .map(|state| state.rect.width())
             .expect("panel is laid out")
@@ -318,7 +318,7 @@ fn open_send_edit_and_save() {
     harness.state_mut().open_file(&file);
     harness.run_steps(2);
     eframe::App::on_exit(harness.state_mut(), None);
-    let restarted = MercuryApp::new(&egui::Context::default());
+    let restarted = VenusApp::new(&egui::Context::default());
     assert_eq!(restarted.current_file.as_deref(), Some(file.as_path()));
     assert!(!restarted.has_unsaved_changes());
 }

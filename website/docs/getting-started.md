@@ -6,97 +6,71 @@ sidebar_position: 1
 
 # Getting Started
 
-Mercury is a small desktop API client written in Rust with [egui](https://github.com/emilk/egui). It runs as a single native binary on macOS, Windows and Linux.
+Venus is a native Rust API client for Insomnia users who want to use their cloud
+collections without running Insomnia. It is an independent fork of
+[Mercury](https://github.com/Harry-kp/mercury), retaining its MIT license.
 
-- **Files, not a database.** A workspace is a folder, and each request is a `.json` file in it. You can edit, grep and commit them.
-- **No account.** Mercury has no servers. Your requests stay in your folder, and app state lives in `~/.mercury/`.
-- **Keyboard-driven.** Every action in the [shortcut list](/docs/reference/keyboard-shortcuts) works without the mouse.
-
-![Mercury](/img/screenshot.png)
+- **Your existing collections.** Browser sign-in, collection discovery, request
+  and environment sync, and cloud commit previews.
+- **Local files.** Requests remain editable JSON files. Cloud sync is optional;
+  ordinary dotenv files stay local.
+- **Native app.** The desktop client is Rust and egui. The optional docs website
+  has its own JavaScript build tools.
 
 ## Installation
 
-### macOS (Homebrew)
+Build the [Venus repository](https://github.com/alvezgr/venus) from source. The
+upstream Mercury installers do not include Venus's Insomnia features.
 
 ```bash
-brew install --cask harry-kp/tap/mercury
+git clone https://github.com/alvezgr/venus.git
+cd venus
+cargo build --release
 ```
 
-Then launch Mercury from **Applications**, or run `mercury` in a terminal.
+Run `./target/release/venus` on Linux or macOS, or `target\release\venus.exe` on
+Windows. The Insomnia bridge has been verified on Linux; other platforms still
+need verification.
 
-The cask installs a universal build, so it runs on both Apple Silicon and Intel Macs.
+### Linux: add to the app launcher
 
-### Shell installer
-
-**macOS / Linux:**
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Harry-kp/mercury/releases/latest/download/mercury-installer.sh | sh
-```
-
-**Windows (PowerShell):**
-```powershell
-irm https://github.com/Harry-kp/mercury/releases/latest/download/mercury-installer.ps1 | iex
-```
-
-Then run:
-```bash
-mercury
-```
-
-If you get "command not found", restart your terminal or run `source ~/.zshrc` (or `~/.bashrc`) to reload your `PATH`.
-
-### Adding it to your Applications folder {#applications-folder}
-
-The shell installer puts `mercury` in `~/.cargo/bin`. To launch it like a regular app:
-
-<details>
-<summary><strong>macOS: add to Applications and the Dock</strong></summary>
+Run from the repository root:
 
 ```bash
-mkdir -p /Applications/Mercury.app/Contents/MacOS && \
-cp ~/.cargo/bin/mercury /Applications/Mercury.app/Contents/MacOS/ && \
-cat > /Applications/Mercury.app/Contents/Info.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>mercury</string>
-    <key>CFBundleName</key>
-    <string>Mercury</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.mercury.app</string>
-</dict>
-</plist>
-EOF
-```
-Search for "Mercury" in Spotlight and drag it to the Dock.
+cargo build --release
 
-</details>
+mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons
+install -m 755 target/release/venus ~/.local/bin/venus
+install -m 644 assets/icons/icon.png ~/.local/share/icons/venus.png
 
-<details>
-<summary><strong>Windows: pin to the Start menu</strong></summary>
-
-1. Open File Explorer at `%USERPROFILE%\.cargo\bin\`
-2. Right-click `mercury.exe` and choose **Create shortcut**
-3. Right-click the shortcut and choose **Pin to Start**
-
-</details>
-
-<details>
-<summary><strong>Linux: add to the app launcher</strong></summary>
-
-```bash
-cat > ~/.local/share/applications/mercury.desktop << EOF
+cat > ~/.local/share/applications/venus.desktop <<EOF
 [Desktop Entry]
-Name=Mercury
-Exec=$HOME/.cargo/bin/mercury
 Type=Application
-Categories=Development;
+Name=Venus
+Comment=API client with Insomnia Cloud Sync
+Exec=/usr/bin/env -u WAYLAND_DISPLAY WINIT_UNIX_BACKEND=x11 $HOME/.local/bin/venus
+Icon=$HOME/.local/share/icons/venus.png
+Terminal=false
+Categories=Development;Network;
 EOF
 ```
 
-</details>
+Close older windows, then search **Venus** in your app menu. The launcher uses
+X11 through XWayland to avoid the Glutin Wayland window-creation error observed
+on this setup. It installs under your home directory without `sudo`.
+
+After code changes, close Venus and update the installed binary:
+
+```bash
+cargo build --release
+install -m 755 target/release/venus ~/.local/bin/venus
+```
+
+### Build dependencies
+
+OpenSSL development libraries and `pkg-config` are needed for the Rust cloud
+bridge. The Linux GUI development packages used in CI are listed in
+`.github/workflows/ci.yml`.
 
 ### Linux: runtime libraries
 
@@ -110,29 +84,31 @@ sudo apt install libgtk-3-0 libxkbcommon0 libxcb-render0 libxcb-shape0 libxcb-xf
 sudo dnf install gtk3 libxkbcommon libxcb openssl-libs
 ```
 
-If Mercury exits immediately with an error mentioning a missing `.so` file, that library is the one to install.
+If Venus exits immediately with an error mentioning a missing `.so` file, that library is the one to install.
 
-### Troubleshooting installation
 
-Mercury is not signed with an Apple Developer ID or submitted to Microsoft, because
-both cost money a free tool doesn't have. Your operating system will say so the
-first time you open it. Nothing is wrong with the download.
+## Connect to Insomnia
 
-**macOS: "Mercury cannot be opened because the developer cannot be verified"**
+Open **Sync → Browse cloud collections…**. Sign in through the browser, paste the
+authentication code into Venus, and select a collection and empty local folder.
+No collection export or running Insomnia app is needed. An installed Insomnia
+login can also be used when available.
 
-Right-click (or Control-click) Mercury in **Applications** and choose **Open**, then
-**Open** again in the dialog. macOS remembers the choice. Alternatively, open
-**System Settings → Privacy & Security** and click **Open Anyway** just after the
-warning appears.
+Pull from master to download updates. Push opens a preview and message box;
+confirm the push to share saved request and environment changes with your team.
+See [Cloud Sync](/docs/features/import-export#local-insomnia-cloud-bridge-linux).
 
-If you installed with the shell installer and run `mercury` from a terminal, macOS
-does not check it at all and it just starts.
+## Existing Mercury data
 
-**Windows SmartScreen:** click **More info**, then **Run anyway**.
+Venus uses `~/.venus/` for state, history and saved login. Missing files are copied
+from `~/.mercury/` when first read. Existing Venus files win, including signed-out
+login markers; Mercury originals and workspace folders remain intact.
+`VENUS_HOME` selects an isolated profile. `MERCURY_HOME` remains a compatibility
+alias, with `VENUS_HOME` taking priority.
 
 ## Next steps
 
-- [Quick Start](/docs/quickstart): send, save and organize your first requests
-- [Requests](/docs/features/requests): the editor, params, headers, body and responses
-- [Environments](/docs/features/environments): `.env` files and `{{variables}}`
+- [Quick Start](/docs/quickstart): send, save and organize requests
+- [Requests](/docs/features/requests): editor, params, headers, body and responses
+- [Environments](/docs/features/environments): local dotenv and cloud JSON environments
 - [Keyboard Shortcuts](/docs/reference/keyboard-shortcuts)
