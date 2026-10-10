@@ -287,7 +287,7 @@ pub struct VenusApp {
     pub dialog_text: String,
     pub toast: Option<Toast>,
     sync_project: Option<String>,
-    sync_busy: Option<&'static str>,
+    pub(super) sync_busy: Option<&'static str>,
     sync_result: Option<(String, bool)>,
     cloud_picker: Option<cloud::Picker>,
     push_dialog: Option<push::PushDialog>,
@@ -1187,6 +1187,9 @@ impl VenusApp {
             .exact_height(Layout::TOPBAR_HEIGHT)
             .frame(widgets::bar_frame())
             .show(ctx, |ui| {
+                if self.sync_busy.is_some() {
+                    ui.disable();
+                }
                 ui.painter().hline(
                     ui.max_rect().expand(Space::LG).x_range(),
                     ui.max_rect().bottom() - 0.5,
@@ -1518,29 +1521,15 @@ impl VenusApp {
         );
         self.handle_events();
 
-        if let Some(busy) = self.sync_busy {
-            self.status_bar(ctx);
-            egui::CentralPanel::default().show(ctx, |ui| {
-                ui.centered_and_justified(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.spinner();
-                        ui.label(busy);
-                    });
-                });
-            });
-            return;
-        }
-
-        if self.has_unsaved_changes() && self.time - self.last_save > AUTOSAVE_SECS {
+        if self.sync_busy.is_none()
+            && self.has_unsaved_changes()
+            && self.time - self.last_save > AUTOSAVE_SECS
+        {
             self.save_file();
         }
 
         self.top_bar(ctx);
         self.status_bar(ctx);
-        if self.sync_busy.is_some() {
-            ctx.request_repaint();
-            return;
-        }
         if !self.focus_mode {
             self.sidebar(ctx);
         }
@@ -1551,7 +1540,17 @@ impl VenusApp {
                     .fill(theme().bg)
                     .inner_margin(Margin::same(Space::LG as i8)),
             )
-            .show(ctx, |ui| self.editor(ui));
+            .show(ctx, |ui| {
+                if self.sync_busy.is_some() {
+                    ui.disable();
+                }
+                self.editor(ui);
+            });
+
+        if self.sync_busy.is_some() {
+            ctx.request_repaint();
+            return;
+        }
 
         self.show_toast(ctx);
         // keys after widgets so text fields have claimed focus this frame
@@ -1667,7 +1666,14 @@ impl VenusApp {
             Ok(message) => (message, false),
             Err(error) => (error, true),
         };
-        self.notify(&message, is_error);
+        self.notify(
+            if is_error {
+                &message
+            } else {
+                message.lines().next().unwrap_or(&message)
+            },
+            is_error,
+        );
         self.sync_result = Some((message, is_error));
     }
 
@@ -1717,11 +1723,19 @@ impl VenusApp {
             }
             if let Some((message, error)) = &self.sync_result {
                 ui.separator();
-                ui.label(egui::RichText::new(message).color(if *error {
-                    theme().error
-                } else {
-                    theme().text_muted
-                }));
+                ui.label(
+                    egui::RichText::new(if *error {
+                        message.as_str()
+                    } else {
+                        message.lines().next().unwrap_or(message)
+                    })
+                    .color(if *error {
+                        theme().error
+                    } else {
+                        theme().text_muted
+                    }),
+                )
+                .on_hover_text(message);
             }
         });
     }
@@ -1733,7 +1747,10 @@ mod tests {
 
     #[test]
     fn sync_menu_and_completion_refresh_without_overwriting_downloads() {
-        use egui_kittest::{kittest::Queryable, Harness};
+        use egui_kittest::{
+            kittest::{NodeT, Queryable},
+            Harness,
+        };
         use std::collections::BTreeMap;
         let root = tempfile::tempdir().unwrap();
         let documents = BTreeMap::from([
@@ -1765,7 +1782,11 @@ mod tests {
         harness.state_mut().sync_busy = Some("Pulling master…");
         harness.state_mut().watcher = None;
         harness.run_steps(2);
-        assert!(harness.query_by_label("Send").is_none());
+        harness.get_by_label("Pulling master…");
+        assert!(harness.get_by_label("Send").accesskit_node().is_disabled());
+        harness.get_by_label("Send").click();
+        harness.run_steps(2);
+        assert!(harness.state().in_flight.is_none());
         let mut downloaded = RequestFile::from_json(&fs::read_to_string(&file).unwrap()).unwrap();
         downloaded.url = "https://example.com/new".into();
         fs::write(&file, downloaded.to_json()).unwrap();
@@ -1774,7 +1795,7 @@ mod tests {
             .tx
             .send(Event::Synced(
                 root.path().into(),
-                Ok("Pulled master".into()),
+                Ok("Pulled master\nWorkspace: /long/path\nPrevious workspace: /backup/path".into()),
             ))
             .unwrap();
         harness.run_steps(2);
@@ -1782,6 +1803,7 @@ mod tests {
         assert_eq!(harness.state().insomnia_id.as_deref(), Some("req_test"));
         assert!(!harness.state().has_unsaved_changes());
         assert!(harness.state().watcher.is_some());
+        assert_eq!(harness.state().toast.as_ref().unwrap().text, "Pulled master");
         assert_eq!(
             RequestFile::from_json(&fs::read_to_string(&file).unwrap()).unwrap(),
             downloaded

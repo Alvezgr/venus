@@ -637,8 +637,8 @@ pub fn run_cli(args: &[String]) -> Option<Result<String, String>> {
         let (baseline, warnings) =
             crate::insomnia_workspace::Baseline::from_master(&args[1], &snapshot.id, documents)?;
         let backup = crate::insomnia_workspace::install_master(&root, &baseline, &warnings)?;
-        Ok(format!("Fetched {} requests and {} environments from master into {}. {} execution warnings in .insomnia-sync/warnings.txt.{}",
-            baseline.files.len(), baseline.environments.len(), root.display(), warnings.len(), if backup.exists() { format!(" Previous workspace: {}", backup.display()) } else { String::new() }))
+        Ok(format!("Pulled master: {} requests, {} environments, {} warnings.\nWorkspace: {}\nExecution warnings: .insomnia-sync/warnings.txt{}",
+            baseline.files.len(), baseline.environments.len(), warnings.len(), root.display(), if backup.exists() { format!("\nPrevious workspace: {}", backup.display()) } else { String::new() }))
     })())
 }
 

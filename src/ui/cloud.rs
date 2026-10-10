@@ -271,7 +271,7 @@ impl VenusApp {
                     self.open_file(&path);
                     self.expand_to(&path);
                 }
-                self.notify(&message, false);
+                self.notify(message.lines().next().unwrap_or(&message), false);
                 self.sync_result = Some((message, false));
             }
             result => {
@@ -426,7 +426,12 @@ mod tests {
         crate::insomnia_workspace::install_master(root.path(), &baseline, &warnings).unwrap();
         let mut app = VenusApp::new(&egui::Context::default());
         app.sync_busy = Some("Downloading master…");
-        app.on_cloud_download(Ok(Some((root.path().into(), "Fetched master".into()))));
+        app.on_cloud_download(Ok(Some((
+            root.path().into(),
+            "Pulled master\nWorkspace: /long/path".into(),
+        ))));
+        assert_eq!(app.toast.as_ref().unwrap().text, "Pulled master");
+        assert!(app.sync_result.as_ref().unwrap().0.contains("/long/path"));
         assert_eq!(app.workspace.as_deref(), Some(root.path()));
         assert_eq!(app.sync_project.as_deref(), Some("prj_test"));
         assert_eq!(app.insomnia_id.as_deref(), Some("req_test"));

@@ -27,6 +27,9 @@ impl VenusApp {
                     .inner_margin(Margin::symmetric(Space::MD as i8, Space::LG as i8)),
             )
             .show(ctx, |ui| {
+                if self.sync_busy.is_some() {
+                    ui.disable();
+                }
                 // the panel's own resize separator draws the right-hand border
                 search_input(ui, "search_box", &mut self.search, "Filter requests", 0.0);
                 ui.add_space(Space::LG);

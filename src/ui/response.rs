@@ -27,6 +27,9 @@ impl VenusApp {
                     .inner_margin(Margin::symmetric(Space::XL as i8, Space::LG as i8)),
             )
             .show(ctx, |ui| {
+                if self.sync_busy.is_some() {
+                    ui.disable();
+                }
                 // the panel's own resize separator draws the left-hand border.
                 // Content must never be wider than the panel: egui grows a
                 // side panel to fit, so an over-wide empty state made the
