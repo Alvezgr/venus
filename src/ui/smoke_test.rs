@@ -21,7 +21,7 @@ fn echo_server() -> String {
             let mut buf = [0; 8192];
             let n = stream.read(&mut buf).unwrap_or(0);
             let request = String::from_utf8_lossy(&buf[..n]).to_string();
-            let body = serde_json::json!({ "echo": request }).to_string();
+            let body = serde_json::json!({ "echo": request, "token":"response-token", "property":{"id":42}, "items":[{"id":7}] }).to_string();
             // `/status/404` replies 404, so failing statuses can be exercised
             let code = request
                 .split_whitespace()
@@ -88,6 +88,25 @@ fn open_send_edit_and_save() {
         .build_state(|ctx, app: &mut VenusApp| app.frame(ctx), app);
     harness.run_steps(2);
     assert_eq!(harness.state().env_name(), Some(".env.dev"));
+
+    // The environment menu's pencil opens the shared key/value editor.
+    harness.get_by_role_and_label(accesskit::Role::Button, ".env.dev").click();
+    harness.run_steps(2);
+    harness.get_by_role_and_label(accesskit::Role::Button, "Edit .env.dev").click();
+    harness.run_steps(2);
+    harness.get_by_label("Bulk edit").click();
+    harness.run_steps(2);
+    harness.get_by_role(accesskit::Role::MultilineTextInput).click();
+    harness.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    harness.get_by_role(accesskit::Role::MultilineTextInput).type_text(
+        &format!("BASE={server}\nTOKEN=secret-token\nEDITOR=from-menu"),
+    );
+    harness.run_steps(2);
+    harness.get_by_role_and_label(accesskit::Role::Button, "Save environment").click();
+    harness.run_steps(2);
+    assert_eq!(harness.state().env_vars["TOKEN"], "secret-token");
+    assert_eq!(harness.state().env_vars["EDITOR"], "from-menu");
+    harness.get_by_role_and_label(accesskit::Role::Button, "Send");
 
     harness
         .get_by_role_and_label(accesskit::Role::Button, "Sync")
@@ -313,12 +332,122 @@ fn open_send_edit_and_save() {
         "the sent request was lost from history"
     );
 
+    // Pre/post variable rules execute from the sent request, without writing environment files.
+    harness.state_mut().dialog = None;
+    harness.state_mut().open_file(&file);
+    harness.run_steps(2);
+    harness
+        .get_by_role_and_label(accesskit::Role::Button, "Variables")
+        .click();
+    harness.run_steps(2);
+    harness.get_by_label("Before sending: literal values or {{existing_variables}}");
+    harness.get_by_label("After a successful response: JSON field paths");
+    harness.state_mut().pre_request_variables = "PAGE=3\nTOKEN=pre-token".into();
+    harness.state_mut().post_request_variables =
+        "TOKEN=token\nPROPERTY=property.id\nFIRST=items.0.id".into();
+    harness.state_mut().url = format!("{server}/capture?page={{{{PAGE}}}}");
+    harness.state_mut().headers_text = "Authorization: Bearer {{TOKEN}}".into();
+    harness.state_mut().send_request();
+    harness.state_mut().post_request_variables = "TOKEN=missing".into();
+    let first_env = harness
+        .state()
+        .env_files
+        .iter()
+        .position(|file| file == ".env.a-first")
+        .unwrap();
+    let dev_env = harness
+        .state()
+        .env_files
+        .iter()
+        .position(|file| file == ".env.dev")
+        .unwrap();
+    harness.state_mut().select_env(Some(first_env));
+    wait_for_response(&mut harness);
+    assert_eq!(harness.state().env_vars["TOKEN"], "wrong");
+    harness.state_mut().select_env(Some(dev_env));
+    let body = &harness.state().response.as_ref().unwrap().body;
+    assert!(body.contains("page=3") && body.contains("Bearer pre-token"));
+    assert_eq!(harness.state().env_vars["TOKEN"], "response-token");
+    assert_eq!(harness.state().env_vars["PROPERTY"], "42");
+    assert_eq!(harness.state().env_vars["FIRST"], "7");
+    assert!(!std::fs::read_to_string(ws.join(".env.dev"))
+        .unwrap()
+        .contains("response-token"));
+
+    harness
+        .state_mut()
+        .open_file(&ws.join("billing/invoices/get-invoice.json"));
+    assert!(harness.state().post_request_variables.is_empty());
+    assert_eq!(harness.state().env_vars["TOKEN"], "response-token");
+    harness.state_mut().headers_text = "Authorization: Bearer {{TOKEN}}".into();
+    harness.state_mut().send_request();
+    wait_for_response(&mut harness);
+    assert!(harness
+        .state()
+        .response
+        .as_ref()
+        .unwrap()
+        .body
+        .contains("Bearer response-token"));
+
+    // Missing paths do not partially apply; failed HTTP responses do not capture tokens.
+    harness.state_mut().pre_request_variables = "FIRST=keep\nTOKEN=keep".into();
+    harness.state_mut().post_request_variables = "FIRST=items.0.id\nTOKEN=missing".into();
+    harness.state_mut().send_request();
+    wait_for_response(&mut harness);
+    assert_eq!(harness.state().env_vars["FIRST"], "keep");
+    assert_eq!(harness.state().env_vars["TOKEN"], "keep");
+    assert!(harness.state().toast.as_ref().unwrap().is_error);
+    harness.state_mut().post_request_variables = "TOKEN=token".into();
+    harness.state_mut().url = format!("{server}/status/404");
+    harness.state_mut().send_request();
+    wait_for_response(&mut harness);
+    assert_eq!(harness.state().env_vars["TOKEN"], "keep");
+
+    let history_count = harness.state().history.len();
+    harness.state_mut().pre_request_variables = "INVALID".into();
+    harness.state_mut().send_request();
+    assert!(harness.state().in_flight.is_none());
+    assert_eq!(harness.state().history.len(), history_count);
+    harness.state_mut().pre_request_variables = "TOKEN=should-not-apply".into();
+    harness.state_mut().post_request_variables = "TOKEN=items[]".into();
+    harness.state_mut().send_request();
+    assert_eq!(harness.state().env_vars["TOKEN"], "keep");
+
+    harness.state_mut().select_env(Some(first_env));
+    assert_eq!(harness.state().env_vars["TOKEN"], "wrong");
+    harness.state_mut().select_env(Some(dev_env));
+    assert_eq!(harness.state().env_vars["TOKEN"], "keep");
+    harness
+        .state_mut()
+        .clear_session_variables(Some(".env.dev".into()));
+    assert_eq!(harness.state().env_vars["TOKEN"], "rotated");
+
+    // Discard late captures when the user changes workspaces.
+    harness.state_mut().pre_request_variables.clear();
+    harness.state_mut().post_request_variables = "TOKEN=token".into();
+    harness.state_mut().url = format!("{server}/capture");
+    harness.state_mut().send_request();
+    let other = dir.path().join("other-workspace");
+    std::fs::create_dir(&other).unwrap();
+    harness.state_mut().open_workspace(other, None);
+    harness
+        .state_mut()
+        .open_workspace(ws.clone(), Some(".env.dev"));
+    wait_for_response(&mut harness);
+    assert_eq!(harness.state().env_vars["TOKEN"], "rotated");
+    harness.state_mut().open_file(&file);
+    harness.state_mut().pre_request_variables = "PAGE=3".into();
+    harness.state_mut().post_request_variables = "TOKEN=token".into();
+
     // quitting and relaunching reopens the request that was open, instead of
     // orphaning it into an "Untitled" unsaved request
-    harness.state_mut().open_file(&file);
     harness.run_steps(2);
     eframe::App::on_exit(harness.state_mut(), None);
     let restarted = VenusApp::new(&egui::Context::default());
     assert_eq!(restarted.current_file.as_deref(), Some(file.as_path()));
     assert!(!restarted.has_unsaved_changes());
+    assert_eq!(restarted.pre_request_variables, "PAGE=3");
+    assert_eq!(restarted.post_request_variables, "TOKEN=token");
+    assert_eq!(restarted.env_vars["TOKEN"], "rotated");
 }

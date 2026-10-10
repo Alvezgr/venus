@@ -203,6 +203,7 @@ mod tests {
                 url: "https://a.com".into(),
                 headers: "A: 1".into(),
                 body: "{}".into(),
+                ..Default::default()
             },
             response: HttpResponse {
                 status: 201,

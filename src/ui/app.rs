@@ -28,6 +28,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 mod cloud;
 #[path = "push.rs"]
 mod push;
+#[path = "environment.rs"]
+mod environment;
 
 const ISSUES_URL: &str = "https://github.com/alvezgr/venus/issues";
 const RELEASES_URL: &str = "https://github.com/alvezgr/venus/releases";
@@ -156,10 +158,17 @@ pub enum Tab {
     Params,
     Headers,
     Auth,
+    Variables,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 4] = [Tab::Body, Tab::Params, Tab::Headers, Tab::Auth];
+    pub const ALL: [Tab; 5] = [
+        Tab::Body,
+        Tab::Params,
+        Tab::Headers,
+        Tab::Auth,
+        Tab::Variables,
+    ];
 }
 
 /// Which pane of a finished response is on screen.
@@ -219,6 +228,12 @@ pub const INSOMNIA: Importer = Importer {
     run: import::import_insomnia,
 };
 
+struct SentVariables {
+    workspace: Option<PathBuf>,
+    environment: Option<String>,
+    post: String,
+}
+
 pub struct VenusApp {
     // Workspace
     pub workspace: Option<PathBuf>,
@@ -231,6 +246,9 @@ pub struct VenusApp {
     pub env_files: Vec<String>,
     pub selected_env: Option<usize>,
     pub env_vars: HashMap<String, String>,
+    environment_editor: Option<environment::EnvironmentEditor>,
+    session_vars: HashMap<Option<String>, HashMap<String, String>>,
+    sent_variables: Option<SentVariables>,
     watcher: Option<workspace::Watcher>,
 
     // Request form. `headers_text` is the source of truth for headers AND auth.
@@ -245,6 +263,8 @@ pub struct VenusApp {
     pub form_bulk_edit: bool,
     pub headers_text: String,
     pub body_text: String,
+    pub pre_request_variables: String,
+    pub post_request_variables: String,
     pub tab: Tab,
     pub headers_bulk_edit: bool,
     pub params_bulk_edit: bool,
@@ -313,6 +333,9 @@ impl VenusApp {
             env_files: Vec::new(),
             selected_env: None,
             env_vars: HashMap::new(),
+            environment_editor: None,
+            session_vars: HashMap::new(),
+            sent_variables: None,
             watcher: None,
             current_file: None,
             insomnia_id: None,
@@ -324,6 +347,8 @@ impl VenusApp {
             form_bulk_edit: false,
             headers_text: String::new(),
             body_text: String::new(),
+            pre_request_variables: String::new(),
+            post_request_variables: String::new(),
             tab: Tab::Body,
             headers_bulk_edit: false,
             params_bulk_edit: false,
@@ -371,6 +396,8 @@ impl VenusApp {
                     url: state.url,
                     headers: state.headers_text,
                     body: state.body_text,
+                    pre_request_variables: state.pre_request_variables,
+                    post_request_variables: state.post_request_variables,
                 },
                 None,
             );
@@ -469,6 +496,11 @@ impl VenusApp {
             self.notify(format!("Workspace not found: {}", path.display()), true);
             return;
         }
+        if self.workspace.as_ref() != Some(&path) {
+            self.environment_editor = None;
+            self.session_vars.clear();
+            self.sent_variables = None;
+        }
         self.env_files = workspace::env_files(&path);
         self.sync_project = Baseline::load(&path)
             .ok()
@@ -522,6 +554,7 @@ impl VenusApp {
     /// Forget the workspace without touching the request being edited: it
     /// becomes an unsaved request, which is what it now is on disk.
     fn close_workspace(&mut self) {
+        self.environment_editor = None;
         self.sync_project = None;
         self.sync_result = None;
         self.watcher = None;
@@ -534,6 +567,8 @@ impl VenusApp {
         self.env_files.clear();
         self.selected_env = None;
         self.env_vars.clear();
+        self.session_vars.clear();
+        self.sent_variables = None;
         self.current_file = None;
         self.saved_content = None;
     }
@@ -558,13 +593,42 @@ impl VenusApp {
 
     fn load_env(&mut self) {
         self.env_vars.clear();
-        let (Some(root), Some(name)) = (&self.workspace, self.env_name()) else {
-            return;
-        };
-        match crate::insomnia_workspace::environment_vars(root, name) {
-            Ok(values) => self.env_vars = values,
-            Err(e) => self.notify(format!("Could not read {name}: {e}"), true),
+        if let (Some(root), Some(name)) = (&self.workspace, self.env_name()) {
+            match crate::insomnia_workspace::environment_vars(root, name) {
+                Ok(values) => self.env_vars = values,
+                Err(e) => self.notify(format!("Could not read {name}: {e}"), true),
+            }
         }
+        let key = self.env_name().map(str::to_string);
+        if let Some(values) = self.session_vars.get(&key) {
+            self.env_vars.extend(values.clone());
+        }
+    }
+
+    pub fn session_variable_names(&self) -> Vec<String> {
+        self.session_vars
+            .get(&self.env_name().map(str::to_string))
+            .map(|vars| vars.keys().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn clear_session_variables(&mut self, environment: Option<String>) {
+        self.session_vars.remove(&environment);
+        self.load_env();
+    }
+
+    fn set_session_variables(
+        &mut self,
+        environment: Option<String>,
+        values: HashMap<String, String>,
+    ) {
+        if self.env_name().map(str::to_string) == environment {
+            self.env_vars.extend(values.clone());
+        }
+        self.session_vars
+            .entry(environment)
+            .or_default()
+            .extend(values);
     }
 
     pub fn start_import(&self, importer: &'static Importer) {
@@ -594,6 +658,8 @@ impl VenusApp {
             url: self.url.clone(),
             headers: self.headers_text.clone(),
             body: self.body_text.clone(),
+            pre_request_variables: self.pre_request_variables.clone(),
+            post_request_variables: self.post_request_variables.clone(),
         }
     }
 
@@ -603,6 +669,8 @@ impl VenusApp {
             url: self.url.clone(),
             headers: kv::headers_to_map(&self.headers_text),
             body: self.body_text.clone(),
+            pre_request_variables: self.pre_request_variables.clone(),
+            post_request_variables: self.post_request_variables.clone(),
             insomnia_id: self.insomnia_id.clone(),
         }
         .to_json()
@@ -623,6 +691,8 @@ impl VenusApp {
         self.url = request.url;
         self.headers_text = request.headers;
         self.body_text = request.body;
+        self.pre_request_variables = request.pre_request_variables;
+        self.post_request_variables = request.post_request_variables;
         self.query_params = kv::parse_query_params(&self.url);
         self.current_file = file;
         self.saved_content = self.current_file.as_ref().map(|_| self.file_content());
@@ -644,6 +714,8 @@ impl VenusApp {
                     url: file.url,
                     headers: kv::map_to_headers(&file.headers),
                     body: file.body,
+                    pre_request_variables: file.pre_request_variables,
+                    post_request_variables: file.post_request_variables,
                 },
                 Some(path.to_path_buf()),
             ),
@@ -727,6 +799,26 @@ impl VenusApp {
             self.focus("url_bar");
             return;
         }
+        let prepared = vars::pre_assignments(&self.pre_request_variables, &self.env_vars).and_then(
+            |updates| {
+                vars::validate_post_assignments(&self.post_request_variables)?;
+                Ok(updates)
+            },
+        );
+        let updates = match prepared {
+            Ok(updates) => updates,
+            Err(error) => {
+                self.notify(error, true);
+                return;
+            }
+        };
+        let environment = self.env_name().map(str::to_string);
+        self.set_session_variables(environment.clone(), updates);
+        self.sent_variables = Some(SentVariables {
+            workspace: self.workspace.clone(),
+            environment,
+            post: self.post_request_variables.clone(),
+        });
         // otherwise last send's "404 Not Found" sits over this send's result
         self.toast = None;
         let request = RequestFile {
@@ -735,6 +827,7 @@ impl VenusApp {
             headers: kv::headers_to_map(&vars::substitute(&self.headers_text, &self.env_vars)),
             body: vars::substitute(&self.body_text, &self.env_vars),
             insomnia_id: None,
+            ..Default::default()
         };
         self.request_counter += 1;
         let id = self.request_counter;
@@ -750,13 +843,26 @@ impl VenusApp {
         self.in_flight = None;
         self.sent = None;
         self.sent_file = None;
+        self.sent_variables = None;
     }
 
     fn on_response(&mut self, result: Result<HttpResponse, String>) {
         self.in_flight = None;
+        let sent_variables = self.sent_variables.take();
+        let mut variable_error = None;
         self.response_tab = ResponseTab::Body;
         match result {
             Ok(response) => {
+                if (200..300).contains(&response.status) {
+                    if let Some(sent) =
+                        sent_variables.filter(|sent| sent.workspace == self.workspace)
+                    {
+                        match vars::post_assignments(&sent.post, &response.body) {
+                            Ok(values) => self.set_session_variables(sent.environment, values),
+                            Err(error) => variable_error = Some(error),
+                        }
+                    }
+                }
                 self.ensure_history_loaded();
                 let request = self.sent.take().unwrap_or_else(|| self.form_request());
                 let entry = HistoryEntry {
@@ -817,6 +923,9 @@ impl VenusApp {
             }
         }
         self.formatted_body = None;
+        if let Some(error) = variable_error {
+            self.notify(error, true);
+        }
     }
 
     pub fn ensure_history_loaded(&mut self) {
@@ -844,7 +953,15 @@ impl VenusApp {
     }
 
     fn copy_as_curl(&mut self) {
-        let sub = |s: &str| vars::substitute(s, &self.env_vars);
+        let mut variables = self.env_vars.clone();
+        match vars::pre_assignments(&self.pre_request_variables, &variables) {
+            Ok(updates) => variables.extend(updates),
+            Err(error) => {
+                self.notify(error, true);
+                return;
+            }
+        }
+        let sub = |s: &str| vars::substitute(s, &variables);
         let curl = curl::generate(
             self.method,
             &http::with_scheme(&sub(&self.url)),
@@ -1101,7 +1218,13 @@ impl VenusApp {
                 Some(folder) => self.open_dialog(Dialog::NewFolder(folder), ""),
                 None => self.pick_folder(),
             },
-            Action::Save => self.save(),
+            Action::Save => {
+                if self.environment_editor.is_some() {
+                    self.save_environment_editor();
+                } else {
+                    self.save();
+                }
+            }
             Action::OpenFolder => self.pick_folder(),
             Action::Palette => self.open_palette(),
             Action::FocusUrl => self.focus("url_bar"),
@@ -1299,15 +1422,28 @@ impl VenusApp {
         };
         let chip = chip(ui, Icon::Layers, &name, color, self.workspace.is_some());
         let mut picked = None;
+        let mut edit = None;
         popup_menu(ui, &chip, Layout::MENU_WIDTH, |ui| {
             if menu_item(ui, None, "None", "") {
                 picked = Some(None);
             }
             for (i, env) in self.env_files.iter().enumerate() {
                 let check = (self.selected_env == Some(i)).then_some(Icon::Check);
-                if menu_item(ui, check, workspace::env_label(env), "") {
-                    picked = Some(Some(i));
-                }
+                ui.horizontal(|ui| {
+                    if icon_button(
+                        ui,
+                        Icon::Pencil,
+                        &format!("Edit {}", workspace::env_label(env)),
+                    )
+                    .clicked()
+                    {
+                        edit = Some(i);
+                        ui.close();
+                    }
+                    if menu_item(ui, check, workspace::env_label(env), "") {
+                        picked = Some(Some(i));
+                    }
+                });
             }
             if self.env_files.is_empty() {
                 ui.add_space(Space::XS);
@@ -1317,6 +1453,9 @@ impl VenusApp {
         });
         if let Some(index) = picked {
             self.select_env(index);
+        }
+        if let Some(index) = edit {
+            self.open_environment_editor(index);
         }
     }
 
@@ -1578,6 +1717,8 @@ impl eframe::App for VenusApp {
             url: self.url.clone(),
             headers_text: self.headers_text.clone(),
             body_text: self.body_text.clone(),
+            pre_request_variables: self.pre_request_variables.clone(),
+            post_request_variables: self.post_request_variables.clone(),
             selected_tab: self.tab as usize,
             env_name: self.env_name().map(str::to_string),
             theme: self.theme_mode,

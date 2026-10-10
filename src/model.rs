@@ -73,9 +73,21 @@ pub struct RequestFile {
     /// Stable cloud identity; absent on ordinary Venus requests.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub insomnia_id: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub pre_request_variables: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub post_request_variables: String,
 }
 
 impl RequestFile {
+    pub fn cloud_eq(&self, other: &Self) -> bool {
+        self.method == other.method
+            && self.url == other.url
+            && self.headers == other.headers
+            && self.body == other.body
+            && self.insomnia_id == other.insomnia_id
+    }
+
     pub fn from_json(content: &str) -> Result<Self, String> {
         serde_json::from_str(content).map_err(|e| format!("Invalid request file: {e}"))
     }
@@ -93,6 +105,10 @@ pub struct Request {
     pub url: String,
     pub headers: String,
     pub body: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub pre_request_variables: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub post_request_variables: String,
 }
 
 /// An unsaved request the user sent (sidebar "Recent").
@@ -157,6 +173,10 @@ pub struct AppState {
     /// The request file that was open, so a restart reopens it instead of
     /// orphaning the editor into an "Untitled" request.
     pub current_file: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub pre_request_variables: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub post_request_variables: String,
 }
 
 /// Sidebar tree node. `children` is `None` until the folder is first expanded.
@@ -193,6 +213,7 @@ mod tests {
         assert_eq!(r.method, HttpMethod::GET);
         assert!(r.headers.is_empty() && r.body.is_empty());
         assert!(r.insomnia_id.is_none());
+        assert!(r.pre_request_variables.is_empty() && r.post_request_variables.is_empty());
 
         let r = RequestFile::from_json(
             r#"{"method":"POST","url":"u","headers":{"B":"2","A":"1"},"body":"x"}"#,
@@ -215,6 +236,9 @@ mod tests {
         let json = r.to_json();
         assert!(json.find("Alpha").unwrap() < json.find("Zeta").unwrap());
         assert_eq!(RequestFile::from_json(&json).unwrap(), r);
+        r.pre_request_variables = "PAGE=1".into();
+        r.post_request_variables = "TOKEN=token".into();
+        assert_eq!(RequestFile::from_json(&r.to_json()).unwrap(), r);
         r.insomnia_id = Some("req_example".into());
         assert_eq!(
             RequestFile::from_json(&r.to_json()).unwrap().insomnia_id,

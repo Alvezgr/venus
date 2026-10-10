@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A Variables tab for pre-request assignments and post-response JSON field
+  captures, without scripts. Values stay in workspace-session memory, scoped to
+  the selected environment; local rules persist across saves and cloud pulls.
 - Venus branding for the Insomnia-focused Mercury fork, with separate binaries,
   app identity and data directory, plus migration of existing Mercury profiles.
 - Review collection changes before pushing, with a custom cloud commit title

@@ -330,6 +330,7 @@ mod tests {
                 headers: map,
                 body: String::new(),
                 insomnia_id: None,
+                ..Default::default()
             },
         )
     }

@@ -29,6 +29,8 @@ Each request is one `.json` file in the workspace that holds a single JSON objec
 | `headers` | object | No | Header name → value, both strings. Missing means no headers. |
 | `body` | string | No | The raw request body. Missing means no body. |
 | `insomnia_id` | string | No | Stable Insomnia request ID in a cloud-backed workspace. Preserve it when editing; duplicating a request in Venus clears it so the copy gets a new ID on push. |
+| `pre_request_variables` | string | No | Local newline-separated assignments, such as `PAGE=1\nHOST={{BASE_URL}}`. |
+| `post_request_variables` | string | No | Local newline-separated response field assignments, such as `TOKEN=token\nPROPERTY=property.id`. |
 
 The smallest valid file:
 
@@ -43,6 +45,7 @@ If a file can't be parsed as a request, it still appears in the sidebar, without
 - The JSON is pretty-printed with 2-space indentation.
 - **Headers are sorted by name**, so saving the same request always produces the same file and Git diffs stay small.
 - **Empty `headers` and `body` are omitted.**
+- Empty variable assignment fields are omitted. Older request files default to no assignments.
 - **Disabled headers (lines starting with `#` in the editor) aren't saved.** The file only has the headers that are sent.
 - Header names are unique keys. A second header with the same name replaces the first.
 - The query string is part of `url`. There's no separate params field.
@@ -66,6 +69,12 @@ Venus doesn't add a `Content-Type` header, so include one yourself.
 ## Variables
 
 `{{NAME}}` (or `{{ NAME }}`) in `url`, header values or `body` is replaced with a value from the selected environment when you send the request. Variables that aren't defined are sent as the literal text. See [Environments](/docs/features/environments).
+
+Pre-request and post-request rules are saved in the optional fields above, but
+their resulting values stay in memory for the workspace session. Rules are
+preserved when pulling an Insomnia collection and excluded from cloud pushes.
+See [request assignments](/docs/features/requests#before-and-after-a-request)
+for syntax and error handling.
 
 ## Editing by hand
 

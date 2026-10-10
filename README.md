@@ -128,6 +128,24 @@ Grep it, diff it, commit it, edit it in VS Code — Venus picks up outside edits
 
 **Environments** are `.env` files in the workspace root. Pick one from the top-right menu or cycle with `⌘ E`; `{{NAME}}` is substituted into the URL, headers and body when you send. Undefined variables are flagged on the tab that holds them. Production shows in red, staging in amber.
 
+**Request variables** use the **Variables** tab, without scripts. Before sending,
+set literals or reuse existing values with `PAGE=1` or `HOST={{BASE_URL}}`.
+After a successful (2xx) JSON response, capture fields with:
+
+```text
+TOKEN=token
+PROPERTY=property.id
+FIRST_ID=items.0.id
+```
+
+Use `{{TOKEN}}` in later requests. Captured values override the selected
+environment for this workspace session; they are never written into environment
+files or pushed to cloud. Switching environments keeps separate session values.
+Clear them in the Variables tab, restart Venus, or change workspaces to reset them.
+The assignment rules are saved locally with each request and preserved during
+cloud pulls; they are not uploaded as Insomnia scripts. A missing or null response
+field leaves all post-request values unchanged and shows an error.
+
 ```bash
 # .env.dev
 BASE_URL=http://localhost:3000

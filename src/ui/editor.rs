@@ -15,6 +15,9 @@ use std::collections::BTreeSet;
 
 impl VenusApp {
     pub fn editor(&mut self, ui: &mut Ui) {
+        if self.environment_pane(ui) {
+            return;
+        }
         self.url_bar(ui);
         ui.add_space(Space::LG);
         widgets::card().show(ui, |ui| {
@@ -174,6 +177,7 @@ impl VenusApp {
         };
         let tabs = [
             (Tab::Body, "Body", 0, missing(&self.body_text)),
+            (Tab::Variables, "Variables", 0, false),
             (
                 Tab::Params,
                 "Params",
@@ -265,7 +269,49 @@ impl VenusApp {
                 Tab::Params => self.params_tab(ui),
                 Tab::Headers => self.headers_tab(ui),
                 Tab::Auth => self.auth_tab(ui, auth_mode),
+                Tab::Variables => self.variables_tab(ui),
             });
+    }
+
+    fn variables_tab(&mut self, ui: &mut Ui) {
+        ui.add(egui::Label::new(muted("One assignment per line. Values stay in this workspace session and selected environment.")).wrap());
+        ui.add_space(Space::MD);
+        let label = ui.add(
+            egui::Label::new("Before sending: literal values or {{existing_variables}}").wrap(),
+        );
+        ui.add(
+            egui::TextEdit::multiline(&mut self.pre_request_variables)
+                .id(egui::Id::new("pre_request_variables"))
+                .hint_text("HOST={{BASE_URL}}\nPAGE=1")
+                .font(mono(Text::BODY))
+                .desired_rows(4)
+                .desired_width(f32::INFINITY),
+        )
+        .labelled_by(label.id);
+        ui.add_space(Space::LG);
+        let label =
+            ui.add(egui::Label::new("After a successful response: JSON field paths").wrap());
+        ui.add(
+            egui::TextEdit::multiline(&mut self.post_request_variables)
+                .id(egui::Id::new("post_request_variables"))
+                .hint_text("TOKEN=token\nPROPERTY=property.id\nFIRST_ID=items.0.id")
+                .font(mono(Text::BODY))
+                .desired_rows(4)
+                .desired_width(f32::INFINITY),
+        )
+        .labelled_by(label.id);
+        ui.add_space(Space::MD);
+        ui.add(egui::Label::new(muted("Use captured values as {{TOKEN}} in later requests. Rules are local to Venus; cloud pulls preserve them.")).wrap());
+        let environment = self.env_name().map(str::to_string);
+        let mut names: Vec<_> = self.session_variable_names();
+        names.sort();
+        if !names.is_empty() {
+            ui.add_space(Space::MD);
+            ui.add(egui::Label::new(format!("Session variables: {}", names.join(", "))).wrap());
+            if ui.button("Clear session variables").clicked() {
+                self.clear_session_variables(environment);
+            }
+        }
     }
 
     fn body_tab(&mut self, ui: &mut Ui, kind: BodyKind) {

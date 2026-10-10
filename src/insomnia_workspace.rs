@@ -250,7 +250,7 @@ impl Baseline {
             .collect();
         Ok(self.files.iter().all(|(id, tracked)| {
             by_id.get(id).is_some_and(|(path, request)| {
-                *path == &tracked.path && *request == &tracked.request
+                *path == &tracked.path && request.cloud_eq(&tracked.request)
             })
         }))
     }
@@ -527,6 +527,7 @@ pub fn project_request(
         headers,
         body: body_text,
         insomnia_id: Some(id.into()),
+        ..Default::default()
     })
 }
 
@@ -888,7 +889,7 @@ pub fn plan_push(
             return Err("Invalid or duplicated Insomnia request identity".into());
         }
         if let Some(tracked) = baseline.files.get(id) {
-            if tracked.path == *path && tracked.request == *request {
+            if tracked.path == *path && tracked.request.cloud_eq(request) {
                 continue;
             }
             let original = baseline
@@ -1041,6 +1042,24 @@ pub fn install_master(
             return Err("Initial fetch requires an empty workspace folder".into());
         }
     }
+    let previous_requests = root
+        .join(STATE)
+        .exists()
+        .then(|| local_requests(root))
+        .transpose()?;
+    let mut baseline = baseline.clone();
+    if let Some(local) = &previous_requests {
+        for request in local.values() {
+            if let Some(tracked) = request
+                .insomnia_id
+                .as_ref()
+                .and_then(|id| baseline.files.get_mut(id))
+            {
+                tracked.request.pre_request_variables = request.pre_request_variables.clone();
+                tracked.request.post_request_variables = request.post_request_variables.clone();
+            }
+        }
+    }
     let parent = root
         .parent()
         .ok_or_else(|| "Invalid workspace folder".to_string())?;
@@ -1107,7 +1126,11 @@ pub fn install_master(
     )?;
     baseline.save(&stage)?;
     let backup = parent.join(new_id(".insomnia-backup")?);
-    if root.join(STATE).exists() && !Baseline::load(root)?.is_clean(root)? {
+    if previous_requests
+        .as_ref()
+        .is_some_and(|before| local_requests(root).as_ref() != Ok(before))
+        || (root.join(STATE).exists() && !Baseline::load(root)?.is_clean(root)?)
+    {
         return Err(
             "Local requests or environments changed during fetch; the existing workspace was retained".into(),
         );
@@ -1195,6 +1218,38 @@ mod tests {
             .unwrap_err()
             .contains("changed since the preview"));
         assert!(!root.join(crate::insomnia_sync::PENDING).exists());
+    }
+
+    #[test]
+    fn local_variable_rules_survive_cloud_pull_without_becoming_cloud_scripts() {
+        let baseline = fixture();
+        let parent = tempfile::tempdir().unwrap();
+        let root = parent.path().join("collection");
+        install_master(&root, &baseline, &[]).unwrap();
+        let path = root.join(&baseline.files["req_example"].path);
+        let mut request = baseline.files["req_example"].request.clone();
+        request.pre_request_variables = "PAGE=1".into();
+        request.post_request_variables = "TOKEN=token".into();
+        atomic_write(&path, request.to_json().as_bytes()).unwrap();
+        assert!(baseline.is_clean(&root).unwrap());
+        let plan = plan_push(
+            &baseline,
+            &baseline.documents,
+            &local_requests(&root).unwrap(),
+        )
+        .unwrap();
+        assert!(plan.changes.is_empty());
+        let mut remote = baseline.documents.clone();
+        remote.get_mut("req_example").unwrap()["url"] = json!("https://updated.test");
+        let downloaded = Baseline::from_master("prj_example", "new-head", remote)
+            .unwrap()
+            .0;
+        install_master(&root, &downloaded, &[]).unwrap();
+        let pulled = RequestFile::from_json(&fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(pulled.url, "https://updated.test");
+        assert_eq!(pulled.pre_request_variables, "PAGE=1");
+        assert_eq!(pulled.post_request_variables, "TOKEN=token");
+        assert!(Baseline::load(&root).unwrap().is_clean(&root).unwrap());
     }
 
     #[test]

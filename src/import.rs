@@ -104,6 +104,7 @@ fn write_request(
         headers,
         body,
         insomnia_id: None,
+        ..Default::default()
     };
     let path = dir.join(format!("{}.json", sanitize_filename(name)));
     write_file(&path, request.to_json())

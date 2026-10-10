@@ -52,6 +52,11 @@ The optional CLI project ID starts with `prj_`; `--insomnia-collections` lists
 accessible collection names and IDs. An initial fetch requires an empty destination.
 Open that folder as a workspace in Venus afterward. Cloud environments are downloaded automatically; local `.env` files remain local.
 
+Venus's pre-request and post-request variable rules also remain local. They are
+saved with request JSON and preserved when pulling updates to the same Insomnia
+request ID, but are not uploaded as scripts. Captured values are session-only;
+they never modify managed environments or become part of a cloud push.
+
 ## Sync inside Venus
 
 Click the sync arrows in the bottom-left status bar. Before opening a synced

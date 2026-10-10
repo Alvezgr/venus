@@ -19,7 +19,7 @@ If the URL, headers or body use a `{{variable}}` that the selected environment d
 
 ## Tabs
 
-The editor has four tabs: **Body**, **Params**, **Headers** and **Auth**.
+The editor has five tabs: **Body**, **Variables**, **Params**, **Headers** and **Auth**.
 
 The body type sits at the right of the tab row and writes the `Content-Type` header for you:
 
@@ -71,6 +71,49 @@ The Auth tab edits the `Authorization` header. See [Authentication](/docs/featur
 ## Variables
 
 `{{NAME}}` is replaced with a value from the selected environment in the URL, headers and body when you send the request or copy it as cURL. Unknown variables are sent as the literal text `{{NAME}}`. See [Environments](/docs/features/environments).
+
+### Before and after a request
+
+Open the **Variables** tab to add one assignment per line. These are variable
+rules, implemented in Rust; they do not execute JavaScript or shell commands.
+
+**Before sending** accepts literal values or references to existing variables:
+
+```text
+PAGE=1
+HOST={{BASE_URL}}
+MESSAGE="two words"
+```
+
+Rules run from top to bottom, so a rule can reference an earlier one. Double
+quoted values use JSON string escaping. Blank lines and full-line `#` comments
+are ignored. Variable names use letters, digits and underscores, starting with
+a letter or underscore. Invalid rules or missing references prevent sending.
+Copying as cURL evaluates these rules for the copied command without changing
+session values.
+
+**After a successful response** reads fields from a 2xx JSON response:
+
+```text
+TOKEN=token
+PROPERTY=property.id
+FIRST_ID=items.0.id
+```
+
+Paths use dots for nested fields and zero-based array indexes. Field names may
+contain letters, digits, underscores or hyphens. Strings are captured without
+quotes; other JSON values use compact JSON. If the body is not JSON or any field
+is missing or null, an error appears and none of the post-request assignments
+are applied. Failed or cancelled requests do not capture response variables.
+
+Use `{{TOKEN}}` in subsequent requests. Values stay in memory for this workspace
+session, separately for each selected environment (including **None**). The tab
+shows variable names and a **Clear session variables** button. Restarting Venus
+or changing workspaces clears all session values. Environment files are never
+modified by these rules.
+
+The rules are saved in the local request file and survive cloud pulls. They
+are not uploaded to Insomnia Cloud or converted into Insomnia scripts.
 
 ## Saving
 
